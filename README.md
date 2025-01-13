@@ -7,8 +7,11 @@ This project helps sim racers optimize their performance by analyzing telemetry 
 
 ## Team
 Colby Todd - 300241178
+
 Engy Ahman Mohamed Shaaban Elsayed
+
 Sarah Siage
+
 Samuel Von Braun
 
 ## License
