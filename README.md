@@ -8,7 +8,7 @@ This project aims to develop a software solution to optimize sim racing by analy
 ## Team
 Colby Todd - 300241178
 
-Engy Ahman Mohamed Shaaban Elsayed
+Engy Elsayed
 
 Sarah Siage
 
