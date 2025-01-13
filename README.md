@@ -1,17 +1,14 @@
 # LapXcel: Sim Racing Telemetry Optimizer
 
-<img src="./logo.png" alt="Project Logo" width="200">
+<img src="./logo.png" alt="Project Logo" width="400">
 
 ## About
 This project aims to develop a software solution to optimize sim racing by analyzing race telemetry data. By ingesting data such as speed, acceleration, braking, and steering inputs, the software will identify patterns to aid racers in getting the theoretical best lap time on any given track. The system will continuously learn from telemetry inputs across various tracks and conditions, allowing sim racers to refine their performance and understand the fastest possible lap dynamics. This tool is intended for professional e-sports teams and individual enthusiasts.
 
 ## Team
 Colby Todd - 300241178
-
 Engy Elsayed - 300228400
-
 Sarah Siage - 300228396
-
 Samuel Braun - 300238833
 
 ## License
