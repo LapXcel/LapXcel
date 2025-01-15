@@ -19,7 +19,9 @@ This project aims to develop a software solution to optimize sim racing by analy
 
 ## Customer
 Sim Racer
+
 Alfred Genadri
+
 alfredgenadri@gmail.com
 
 ## License
