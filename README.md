@@ -13,7 +13,7 @@ This project aims to develop a software solution to optimize sim racing by analy
 | Name   | Student Number   | Email  |
 |------------|------------|------------|
 | [Colby Todd](https://www.linkedin.com/in/colbytodd/) | 300241178| ctodd083@uottawa.ca|
-| [Engy Elsayed](https://www.linkedin.com/in/engy-els) | 300228400| |
+| [Engy Elsayed](https://www.linkedin.com/in/engy-els) | 300228400| eelsa005@uottawa.ca|
 | [Sarah Siage](https://www.linkedin.com/in/sarah-siage-167144224)| 300228396| |
 | [Samuel Braun](https://www.linkedin.com/in/samuel-braun-5a1435221/)| 300238833| |
 
