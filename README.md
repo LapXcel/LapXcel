@@ -17,8 +17,10 @@ This project aims to develop a software solution to optimize sim racing by analy
 | [Sarah Siage](https://www.linkedin.com/in/sarah-siage-167144224)| 300228396|
 | [Samuel Braun](https://www.linkedin.com/in/samuel-braun-5a1435221/)| 300238833|
 
-## Stakeholders
+## Customer
+Sim Racer
 Alfred Genadri
+alfredgenadri@gmail.com
 
 ## License
 This project is licensed under the MIT License.
