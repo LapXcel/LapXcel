@@ -281,20 +281,18 @@ class SimRacingEnv(gym.Env):
         """Clean up resources when the environment is closed."""
         self._disconnect_telemetry()
 
+# Simple test run of the environment.
+env = SimRacingEnv()
+obs = env.reset()
+print("Initial observation:", obs)
 
-if __name__ == "__main__":
-    # Simple test run of the environment.
-    env = SimRacingEnv()
-    obs = env.reset()
-    print("Initial observation:", obs)
+for _ in range(50):
+    # Sample a random action.
+    action = env.action_space.sample()
+    obs, reward, done, info = env.step(action)
+    print(f"Obs: {obs}, Reward: {reward}, Done: {done}")
+    if done:
+        print("Episode finished.")
+        break
 
-    for _ in range(50):
-        # Sample a random action.
-        action = env.action_space.sample()
-        obs, reward, done, info = env.step(action)
-        print(f"Obs: {obs}, Reward: {reward}, Done: {done}")
-        if done:
-            print("Episode finished.")
-            break
-
-    env.close()
+env.close()
