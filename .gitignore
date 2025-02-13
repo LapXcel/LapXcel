@@ -1,2 +1,3 @@
 virtual_env/*
 get_contents.py
+src/__*
