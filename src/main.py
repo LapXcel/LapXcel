@@ -12,7 +12,11 @@ def main():
         while(1):
             sock.update()
             print(sock.data)
-            controller.perform(1, 0)
+            try:
+                controller.perform(0.5, 0)
+                print("Controller input sent")
+            except Exception as e:
+                print(f"Error sending input: {e}")
 
 if __name__ == "__main__":
     """
