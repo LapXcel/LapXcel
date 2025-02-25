@@ -20,9 +20,9 @@ class Env(gym.Env):
     _invalid_flag = 0.0
     _sock = None
 
-    def __init__(self, render_mode: Optional[str] = None, max_speed=200.0, steer_scale=[-360, 360]):
+    def __init__(self, render_mode: Optional[str] = None, max_speed=200.0):
         # Initialize the controller
-        self.controller = ACController(steer_scale)
+        self.controller = ACController()
         self.max_speed = max_speed
 
         # Observations is a Box with the following data:
