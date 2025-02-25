@@ -116,10 +116,10 @@ class Env(gym.Env):
 
     def _get_reward(self, terminated, lap_time):
         """
-        Reward function for the agent. It will give a reward of 1
-        if the lap is completed under 120000ms (2 minutes).
+        Reward function for the agent. It will give a reward of
+        120000 (2 minutes) - lap_time if the lap has been completed.
         """
-        return 1 if terminated and lap_time < 120000 else 0
+        return 120000 - lap_time if terminated else 0
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """
