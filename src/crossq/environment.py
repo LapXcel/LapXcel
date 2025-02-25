@@ -39,7 +39,7 @@ class Env(gym.Env):
             low=np.array(
                 [0.000, 0.0, -2000.0, -2000.0, -2000.0, 0.0, 1.0, 0, 0]),
             high=np.array([1.000, max_speed, 2000.0,
-                          2000.0, 2000.0, 1.0, 2.0, 120000, 500]),
+                          2000.0, 2000.0, 1.0, 2.0, 180000, 500]),
             shape=(10,),
             dtype=np.float32,
         )
@@ -114,11 +114,12 @@ class Env(gym.Env):
         """
         return {}
 
-    def _get_reward(self):
+    def _get_reward(self, terminated, lap_time):
         """
-        TODO: IMPLEMENT REWARD FUNCTION
+        Reward function for the agent. It will give a reward of 1
+        if the lap is completed under 120000ms (2 minutes).
         """
-        return
+        return 1 if terminated and lap_time < 120000 else 0
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """
@@ -159,6 +160,7 @@ class Env(gym.Env):
         lap_invalid = observation[5]
         lap_count = observation[6]
         track_progress = observation[0]
+        lap_time = observation[7]
         if ignore_done:
             terminated = False
         else:
@@ -171,7 +173,7 @@ class Env(gym.Env):
         reward = None
         info = None
         if not ignore_done:
-            reward = self._get_reward()
+            reward = self._get_reward(terminated, lap_time)
             info = self._get_info()
 
         return observation, reward, terminated, truncated, info
