@@ -23,24 +23,24 @@ class Env(gym.Env):
     def __init__(self, render_mode: Optional[str] = None, max_speed=200.0):
         # Initialize the controller
         self.controller = ACController()
+
+        # Initialize reward variables
         self.max_speed = max_speed
+        self.track_progress = 0.000
+        self.progress_goal = 0.99
+        self.lap_count = 0
+        self.lap_time = 0
+        self.lap_invalid = False
 
         # Observations is a Box with the following data:
-        # - "track_progress": The progress of the car on the track, in [0.0, 1.0]
         # - "speed_kmh": The speed of the car in km/h [0.0, max_speed]
         # - "world_loc_x": The world's x location of the car [-2000.0, 2000.0]
         # - "world_loc_y": The world's y location of the car [-2000.0, 2000.0]
         # - "world_loc_z": The world's z location of the car [-2000.0, 2000.0]
-        # - "lap_invalid": Whether the current lap is valid [0.0, 1.0]
-        # - "lap_count": The current lap count [1.0, 2.0]
-        # - "lap_time": The current time of the lap in ms [0, 120000]
-        # - "previous_track_progress": The previous track progress [0.0, 1.0]
         self.observation_space = spaces.Box(
-            low=np.array(
-                [0.000, 0.0, -2000.0, -2000.0, -2000.0, 0.0, 1.0, 0, 0]),
-            high=np.array([1.000, max_speed, 2000.0,
-                          2000.0, 2000.0, 1.0, 2.0, 180000, 500]),
-            shape=(10,),
+            low=np.array([0.0, -2000.0, -2000.0, -2000.0]),
+            high=np.array([max_speed, 2000.0, 2000.0, 2000.0]),
+            shape=(4,),
             dtype=np.float32,
         )
 
@@ -54,15 +54,17 @@ class Env(gym.Env):
             dtype=np.float32
         )
 
-
         # Assert that the render mode is valid
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-    def set_sock(self, sock: ACSocket):
+    def set_sock(self, sock: ACSocket) -> None:
+        """
+        Set the socket for the socket connection.
+        """
         self._sock = sock
 
-    def _update_obs(self):
+    def _update_obs(self) -> np.array:
         """
         Get the current observation from the game over socket.
         """
@@ -81,45 +83,43 @@ class Env(gym.Env):
             print(colorize("Error parsing data, returning empty dict!", "red"))
             return {}
 
-        # throttle = float(data_dict['throttle'])
-        # brake = float(data_dict['brake'])
-        # steer = float(data_dict['steer'])
-        # lap_time = float(data_dict['lap_time'])
+        # Update variables for reward function
+        self.track_progress = float(data_dict['track_progress'])
+        self.lap_count = float(data_dict['lap_count'])
+        self.lap_time = int(data_dict['lap_time'])
 
-        # print(data_dict)
-        track_progress = float(data_dict['track_progress'])
+        # Lap stays invalid as soon as it has been invalid once
+        self.lap_invalid = self._invalid_flag
+        if data_dict['lap_invalid'] == 'True':
+            self.lap_invalid = 1.0
+        self._invalid_flag = self.lap_invalid
+
+        # Get observation space
         speed_kmh = float(data_dict['speed_kmh'])
         world_loc_x = float(data_dict['world_loc[0]'])
         world_loc_y = float(data_dict['world_loc[1]'])
         world_loc_z = float(data_dict['world_loc[2]'])
-        lap_count = float(data_dict['lap_count'])
-        lap_time = int(data_dict['lap_time'])
-        previous_track_progress = self._observations[0] if self._observations is not None else 0.000
-
-
-        # Lap stays invalid as soon as it has been invalid once
-        lap_invalid = self._invalid_flag
-        if data_dict['lap_invalid'] == 'True':
-            lap_invalid = 1.0
-        self._invalid_flag = lap_invalid
 
         # Update the observations
         self._observations = np.array(
-            [track_progress, speed_kmh, world_loc_x, world_loc_y, world_loc_z, lap_invalid, lap_count, lap_time, previous_track_progress], dtype=np.float32)
+            [speed_kmh, world_loc_x, world_loc_y, world_loc_z], dtype=np.float32)
         return self._observations
 
-    def _get_info(self):
+    def _get_info(self) -> dict:
         """
         Extra information returned by step and reset functions.
         """
         return {}
 
-    def _get_reward(self, terminated, lap_time):
+    def _get_reward(self, terminated: bool) -> int:
         """
         Reward function for the agent. It will give a reward of
-        120000 (2 minutes) - lap_time if the lap has been completed.
+        120001 (2 minutes) - lap_time if the lap has been completed.
         """
-        return 120000 - lap_time if terminated else 0
+        if terminated:
+            return 120001 - self.lap_time if not self.lap_invalid else 0
+
+        return 0
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """
@@ -154,17 +154,13 @@ class Env(gym.Env):
         # Get the new observations
         observation = self._update_obs()
 
-        # Progress goal (100% of the track, with 0.99 to account for errors)
-        progress_goal = 0.99
-
-        lap_invalid = observation[5]
-        lap_count = observation[6]
-        track_progress = observation[0]
-        lap_time = observation[7]
         if ignore_done:
             terminated = False
         else:
-            terminated = lap_count > 1.0 or track_progress >= progress_goal
+            terminated = (self.lap_count > 1.0 
+                            or self.track_progress >= self.progress_goal 
+                            or self.lap_time >= 120000
+                            or self.lap_invalid)
 
         # Truncated gets updated based on timesteps by TimeLimit wrapper
         truncated = False
@@ -173,18 +169,18 @@ class Env(gym.Env):
         reward = None
         info = None
         if not ignore_done:
-            reward = self._get_reward(terminated, lap_time)
+            reward = self._get_reward(terminated)
             info = self._get_info()
 
         return observation, reward, terminated, truncated, info
 
-    def render(self):
+    def render(self) -> None:
         """
         Render the environment; a PyGame renderer is not needed for AC.
         """
         print(colorize("Rendering not supported for this environment!", "red"))
 
-    def close(self):
+    def close(self) -> None:
         """
         Close the environment and the socket connection.
         """
