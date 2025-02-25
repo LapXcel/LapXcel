@@ -1,32 +1,76 @@
-from ac_controller import ACController
+import os
+
 from ac_socket import ACSocket
+from gymnasium.wrappers import TimeLimit
+from crossq.environment import Env
+from crossq.utils.logx import colorize
+from crossq.sac import SacAgent
+
 
 def main():
     """
-    Main Function
+    The main function of the standalone application.
+    It will initialize the environment and the agent, and then run the training loop.
     """
-    controller = ACController()
+    print(colorize("\n--- Assetto Corsa Reinforcement Learning ---\n",
+          "magenta", bold=True))
+    if input(colorize("Load previous model? (y/n): ", "gray")) == "y":
+        load_path = input(
+            colorize("Enter model directory (relative): ", "gray"))
+        # Check if load_dir exists and if it is a directory and not empty
+        if not os.path.exists(load_path):
+            raise FileNotFoundError(
+                colorize("Directory does not exist!", "red"))
+        if not os.path.isdir(load_path):
+            raise NotADirectoryError(
+                colorize("Path is not a directory!", "red"))
+        if not os.listdir(load_path):
+            raise ValueError(colorize("Directory is empty!", "red"))
+
+        # The experiment name is the name of the directory
+        exp_name = load_path.split("/")[-1]
+        print(colorize("Loading model for experiment '" +
+              exp_name + "' from " + load_path + "...", "green"))
+    else:
+        load_path = None
+
+    exp_name = input(colorize("Enter experiment name: ", "gray"))
+    print("")
+
+    # Car data (Ferrari 458 GT2)
+    max_speed = 320.0
+
+
+
+    # Initialize the environment, max_episode_steps is the maximum amount of steps before the episode is truncated
+    env = TimeLimit(Env(max_speed=max_speed), max_episode_steps=1000)
+
+    # Initialize the agent
+    hyperparams = {
+        "gamma": 0.99,
+        "polyak": 0.999,  # 1.0 - tau (soft target update)
+        "lr": 1e-3,
+        "alpha": 0.2,
+        "batch_size": 32,
+        "n_episodes": 10000,
+        "update_after": 1000,
+        "update_every": 50,
+        "start_steps": 10000,
+        "replay_size": int(1e6)
+    }
+
+    agent = SacAgent(env, exp_name, load_path, **hyperparams)
+
+    # Establish a socket connection
     sock = ACSocket()
-
     with sock.connect() as conn:
-        while(1):
-            sock.update()
-            try:
-                # Convert the byte data to a string
-                data_str = sock.data.decode('utf-8')
 
-                # Split the string by commas and map values to a dictionary
-                data_dict = dict(map(lambda x: x.split(':'), data_str.split(',')))
-                print(data_dict)
-            except:
-                # If the data is invalid, throw error and return empty dict
-                print(("Error parsing data, returning empty dict!", "red"))
-                return {}
-            try:
-                controller.perform(0.5, 0)
-                print("Controller input sent")
-            except Exception as e:
-                print(f"Error sending input: {e}")
+        # Set the socket in the environment
+        env.unwrapped.set_sock(sock)
+
+        # Run the training loop
+        agent.train()
+
 
 if __name__ == "__main__":
     """
