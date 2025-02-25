@@ -36,10 +36,12 @@ class Env(gym.Env):
         # - "world_loc_x": The world's x location of the car [-2000.0, 2000.0]
         # - "world_loc_y": The world's y location of the car [-2000.0, 2000.0]
         # - "world_loc_z": The world's z location of the car [-2000.0, 2000.0]
+        # - "velocity_x": The x velocity of the car [-max_speed, max_speed]
+        # - "velocity_z": The z velocity of the car [-max_speed, max_speed]
         self.observation_space = spaces.Box(
-            low=np.array([0.0, -2000.0, -2000.0, -2000.0]),
-            high=np.array([max_speed, 2000.0, 2000.0, 2000.0]),
-            shape=(4,),
+            low=np.array([0.0, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed]),
+            high=np.array([max_speed, 2000.0, 2000.0, 2000.0, max_speed, max_speed]),
+            shape=(6,),
             dtype=np.float32,
         )
 
@@ -98,10 +100,12 @@ class Env(gym.Env):
         world_loc_x = float(data_dict['world_loc[0]'])
         world_loc_y = float(data_dict['world_loc[1]'])
         world_loc_z = float(data_dict['world_loc[2]'])
+        velocity_x = float(data_dict['velocity[0]'])
+        velocity_z = float(data_dict['velocity[1]'])
 
         # Update the observations
         self._observations = np.array(
-            [speed_kmh, world_loc_x, world_loc_y, world_loc_z], dtype=np.float32)
+            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float32)
         return self._observations
 
     def _get_info(self) -> dict:
