@@ -8,7 +8,6 @@ from gymnasium import spaces
 from ac_controller import ACController
 from ac_socket import ACSocket
 from crossq.utils.logx import colorize
-from crossq.utils.track_spline import get_heading_error, get_distance_to_center_line
 
 
 class Env(gym.Env):
@@ -21,7 +20,7 @@ class Env(gym.Env):
     _invalid_flag = 0.0
     _sock = None
 
-    def __init__(self, render_mode: Optional[str] = None, max_speed=200.0, steer_scale=[-360, 360], spline_points=[[], []]):
+    def __init__(self, render_mode: Optional[str] = None, max_speed=200.0, steer_scale=[-360, 360]):
         # Initialize the controller
         self.controller = ACController(steer_scale)
         self.max_speed = max_speed
@@ -34,14 +33,13 @@ class Env(gym.Env):
         # - "world_loc_z": The world's z location of the car [-2000.0, 2000.0]
         # - "lap_invalid": Whether the current lap is valid [0.0, 1.0]
         # - "lap_count": The current lap count [1.0, 2.0]
+        # - "lap_time": The current time of the lap in ms [0, 120000]
         # - "previous_track_progress": The previous track progress [0.0, 1.0]
-        # - "heading_error": The difference between the car heading and the heading of the center line point closest to the car [0.0, 2.0 * pi]
-        # - "dist_offcenter": The distance of the car to the center line
         self.observation_space = spaces.Box(
             low=np.array(
-                [0.000, 0.0, -2000.0, -2000.0, -2000.0, 0.0, 1.0, 0.000, 0, 0]),
+                [0.000, 0.0, -2000.0, -2000.0, -2000.0, 0.0, 1.0, 0, 0]),
             high=np.array([1.000, max_speed, 2000.0,
-                          2000.0, 2000.0, 1.0, 2.0, 1.000, 2.0 * math.pi, 500]),
+                          2000.0, 2000.0, 1.0, 2.0, 120000, 500]),
             shape=(10,),
             dtype=np.float32,
         )
@@ -56,8 +54,6 @@ class Env(gym.Env):
             dtype=np.float32
         )
 
-        # Set the spline points for the track center line
-        self.spline_points = spline_points
 
         # Assert that the render mode is valid
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -97,14 +93,9 @@ class Env(gym.Env):
         world_loc_y = float(data_dict['world_loc[1]'])
         world_loc_z = float(data_dict['world_loc[2]'])
         lap_count = float(data_dict['lap_count'])
+        lap_time = int(data_dict['lap_time'])
         previous_track_progress = self._observations[0] if self._observations is not None else 0.000
-        velocity_x = float(data_dict['velocity[0]'])
-        velocity_z = float(data_dict['velocity[1]'])
 
-        heading_error = get_heading_error(self.spline_points, world_loc_x, world_loc_y, np.array([
-            velocity_x, velocity_z]))
-        dist_offcenter = get_distance_to_center_line(
-            self.spline_points, world_loc_x, world_loc_y)
 
         # Lap stays invalid as soon as it has been invalid once
         lap_invalid = self._invalid_flag
@@ -114,7 +105,7 @@ class Env(gym.Env):
 
         # Update the observations
         self._observations = np.array(
-            [track_progress, speed_kmh, world_loc_x, world_loc_y, world_loc_z, lap_invalid, lap_count, previous_track_progress, heading_error, dist_offcenter], dtype=np.float32)
+            [track_progress, speed_kmh, world_loc_x, world_loc_y, world_loc_z, lap_invalid, lap_count, lap_time, previous_track_progress], dtype=np.float32)
         return self._observations
 
     def _get_info(self):
