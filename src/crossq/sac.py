@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from torch.optim import Adam
 import time
-import crossq.core as core
-from crossq.utils.logx import EpisodeLogger, colorize
+import core as core
+from .utils.logx import EpisodeLogger, colorize
 
 
 class ReplayBuffer:
