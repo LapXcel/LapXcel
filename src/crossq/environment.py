@@ -20,7 +20,20 @@ class Env(gym.Env):
     _sock = None
 
     def __init__(self, render_mode: Optional[str] = None, max_speed=200.0):
-        # Initialize the controller
+        self.steps_taken = 0
+        self.observation_space = spaces.Box(
+            low=np.array([0.0, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed]),
+            high=np.array([max_speed, 2000.0, 2000.0, 2000.0, max_speed, max_speed]),
+            shape=(6,),
+            dtype=np.float32,
+        )
+        self.action_space = spaces.Box(
+            low=np.array([-1.0, -1.000]),
+            high=np.array([1.0, 1.000]),
+            shape=(2,),
+            dtype=np.float32
+        )
+
         self.controller = ACController()
 
         # Initialize reward variables
@@ -131,51 +144,53 @@ class Env(gym.Env):
         :param options: The options for the environment
         :return: The initial observation and info
         """
-        # We need the following line to seed self.np_random
         super().reset(seed=seed)
-
-        # Reset the controller
         self.controller.reset_car()
-
-        # Get the initial observations from the game
+        self.steps_taken = 0  # Reset step counter at the start of each episode
         self._invalid_flag = 0.0
         observation = self._update_obs()
         info = self._get_info()
+        return observation, info
 
         return observation, info
 
     def step(self, action: np.ndarray, ignore_done: bool = False):
-        """
-        Perform an action in the environment and get the results.
-        :param action: The action to perform
-        :return: The observation, reward, terminated, truncated, info
-        """
-        # Perform the action in the game
-        # print("action", action)
+        # Perform the action in the game and update the state
         self.controller.perform(action[0], action[1])
+        self.steps_taken += 1  # Count each step taken
 
-        # Get the new observations
         observation = self._update_obs()
 
-        if ignore_done:
-            terminated = False
-        else:
-            terminated = (self.lap_count > 1.0 
-                            or self.track_progress >= self.progress_goal 
-                            or self.lap_time >= 120000
-                            or self.lap_invalid)
+        terminated = (self.lap_count > 1.0 
+                      or self.track_progress >= self.progress_goal 
+                      or self.lap_time >= 120000
+                      or self.lap_invalid)
 
-        # Truncated gets updated based on timesteps by TimeLimit wrapper
-        truncated = False
+        truncated = False  # Could be updated with a TimeLimit wrapper
 
-        # Get the reward and info
-        reward = None
-        info = None
-        if not ignore_done:
-            reward = self._get_reward(terminated)
-            info = self._get_info()
+        # Calculate reward using our custom reward function
+        reward = self._get_reward(terminated)
+        info = self._get_info()
 
         return observation, reward, terminated, truncated, info
+    
+    def _get_reward(self, terminated: bool) -> float:
+        """
+        Reward function that penalizes every step (-1 per step)
+        and gives a bonus when a lap is completed validly.
+        This way, finishing a lap in fewer steps leads to a higher overall reward.
+        """
+        per_step_penalty = -1.0
+
+        if terminated:
+            if not self.lap_invalid:
+                terminal_bonus = 1000.0
+            else:
+                terminal_bonus = -100.0
+            return terminal_bonus
+        else:
+            return per_step_penalty
+
 
     def render(self) -> None:
         """
