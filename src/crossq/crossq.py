@@ -13,9 +13,9 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.noise import ActionNoise, NormalActionNoise
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 
-from sbx.common.off_policy_algorithm import OffPolicyAlgorithmJax
-from sbx.common.type_aliases import ReplayBufferSamplesNp, RLTrainState, ActorTrainState
-from sbx.sac.policies import SACPolicy
+from crossq.off_policy_algorithm import OffPolicyAlgorithmJax
+from crossq.type_aliases import ReplayBufferSamplesNp, RLTrainState, ActorTrainState
+from crossq.policies import SACPolicy
 
 
 class EntropyCoef(nn.Module):
