@@ -119,7 +119,7 @@ class Env(gym.Env):
 
         # Update the observations
         self._observations = np.array(
-            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float)
+            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float32)
         return self._observations
 
     def _get_info(self) -> dict:
