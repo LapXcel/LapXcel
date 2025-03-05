@@ -42,7 +42,7 @@ class Env(gym.Env):
         self.progress_goal = 0.99
         self.lap_count = 0
         self.lap_time = 0
-        self.current_progress = 0
+        self.current_progress = 1
         self.lap_invalid = False
 
         # Observations is a Box with the following data:
@@ -119,7 +119,7 @@ class Env(gym.Env):
 
         # Update the observations
         self._observations = np.array(
-            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float32)
+            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float)
         return self._observations
 
     def _get_info(self) -> dict:
@@ -164,10 +164,10 @@ class Env(gym.Env):
                 return -1000.0
             else:
                 return finishing_reward
-        elif self.track_progress == self.current_progress:
+        elif self.track_progress * 100 >= self.current_progress:
             temp = self.current_progress
-            self.current_progress+=1
-            return -step_penalty + progress_reward*temp
+            self.current_progress += 1
+            return -step_penalty + progress_reward * temp
         else:
             return -step_penalty
 
