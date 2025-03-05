@@ -138,58 +138,43 @@ class Env(gym.Env):
         return 0
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
-        """
-        Reset the environment to initiate a new episode.
-        :param seed: The seed for the environment's random number generator
-        :param options: The options for the environment
-        :return: The initial observation and info
-        """
         super().reset(seed=seed)
         self.controller.reset_car()
-        self.steps_taken = 0  # Reset step counter at the start of each episode
+        # self.steps_taken = 0  # reset step counter
         self._invalid_flag = 0.0
         observation = self._update_obs()
         info = self._get_info()
         return observation, info
 
-        return observation, info
-
     def step(self, action: np.ndarray, ignore_done: bool = False):
-        # Perform the action in the game and update the state
+        # Apply the action in the game.
         self.controller.perform(action[0], action[1])
-        self.steps_taken += 1  # Count each step taken
+        # self.steps_taken += 1  # increment step counter
 
         observation = self._update_obs()
 
-        terminated = (self.lap_count > 1.0 
-                      or self.track_progress >= self.progress_goal 
-                      or self.lap_time >= 120000
-                      or self.lap_invalid)
+        terminated = (self.track_progress >= self.progress_goal 
+                    # or self.lap_time >= 120000
+                    or self.lap_invalid)
 
-        truncated = False  # Could be updated with a TimeLimit wrapper
-
-        # Calculate reward using our custom reward function
+        truncated = False
         reward = self._get_reward(terminated)
         info = self._get_info()
 
         return observation, reward, terminated, truncated, info
     
     def _get_reward(self, terminated: bool) -> float:
-        """
-        Reward function that penalizes every step (-1 per step)
-        and gives a bonus when a lap is completed validly.
-        This way, finishing a lap in fewer steps leads to a higher overall reward.
-        """
-        per_step_penalty = -1.0
+        step_penalty = 0.01
+        finishing_reward = 1.0
 
         if terminated:
-            if not self.lap_invalid:
-                terminal_bonus = 1000.0
+            if self.lap_invalid:
+                return -1000.0
             else:
-                terminal_bonus = -100.0
-            return terminal_bonus
+                return finishing_reward - (self.steps_taken * step_penalty)
         else:
-            return per_step_penalty
+            return -step_penalty
+
 
 
     def render(self) -> None:
