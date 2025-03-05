@@ -42,6 +42,7 @@ class Env(gym.Env):
         self.progress_goal = 0.99
         self.lap_count = 0
         self.lap_time = 0
+        self.current_progress = 0
         self.lap_invalid = False
 
         # Observations is a Box with the following data:
@@ -127,16 +128,6 @@ class Env(gym.Env):
         """
         return {}
 
-    def _get_reward(self, terminated: bool) -> int:
-        """
-        Reward function for the agent. It will give a reward of
-        120001 (2 minutes) - lap_time if the lap has been completed.
-        """
-        if terminated:
-            return 120001 - self.lap_time if not self.lap_invalid else 0
-
-        return 0
-
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
         self.controller.reset_car()
@@ -165,17 +156,20 @@ class Env(gym.Env):
     
     def _get_reward(self, terminated: bool) -> float:
         step_penalty = 0.01
+        progress_reward = 0.01
         finishing_reward = 1.0
 
         if terminated:
             if self.lap_invalid:
                 return -1000.0
             else:
-                return finishing_reward - (self.steps_taken * step_penalty)
+                return finishing_reward
+        elif self.track_progress == self.current_progress:
+            temp = self.current_progress
+            self.current_progress+=1
+            return -step_penalty + progress_reward*temp
         else:
             return -step_penalty
-
-
 
     def render(self) -> None:
         """
