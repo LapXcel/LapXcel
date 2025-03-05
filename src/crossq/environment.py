@@ -20,7 +20,20 @@ class Env(gym.Env):
     _sock = None
 
     def __init__(self, render_mode: Optional[str] = None, max_speed=200.0):
-        # Initialize the controller
+        self.steps_taken = 0
+        self.observation_space = spaces.Box(
+            low=np.array([0.0, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed]),
+            high=np.array([max_speed, 2000.0, 2000.0, 2000.0, max_speed, max_speed]),
+            shape=(6,),
+            dtype=np.float32,
+        )
+        self.action_space = spaces.Box(
+            low=np.array([-1.0, -1.000]),
+            high=np.array([1.0, 1.000]),
+            shape=(2,),
+            dtype=np.float32
+        )
+
         self.controller = ACController()
 
         # Initialize reward variables
@@ -29,6 +42,7 @@ class Env(gym.Env):
         self.progress_goal = 0.99
         self.lap_count = 0
         self.lap_time = 0
+        self.current_progress = 0
         self.lap_invalid = False
 
         # Observations is a Box with the following data:
@@ -114,68 +128,48 @@ class Env(gym.Env):
         """
         return {}
 
-    def _get_reward(self, terminated: bool) -> int:
-        """
-        Reward function for the agent. It will give a reward of
-        120001 (2 minutes) - lap_time if the lap has been completed.
-        """
-        if terminated:
-            return 120001 - self.lap_time if not self.lap_invalid else 0
-
-        return 0
-
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
-        """
-        Reset the environment to initiate a new episode.
-        :param seed: The seed for the environment's random number generator
-        :param options: The options for the environment
-        :return: The initial observation and info
-        """
-        # We need the following line to seed self.np_random
         super().reset(seed=seed)
-
-        # Reset the controller
         self.controller.reset_car()
-
-        # Get the initial observations from the game
+        # self.steps_taken = 0  # reset step counter
         self._invalid_flag = 0.0
         observation = self._update_obs()
         info = self._get_info()
-
         return observation, info
 
     def step(self, action: np.ndarray, ignore_done: bool = False):
-        """
-        Perform an action in the environment and get the results.
-        :param action: The action to perform
-        :return: The observation, reward, terminated, truncated, info
-        """
-        # Perform the action in the game
-        # print("action", action)
+        # Apply the action in the game.
         self.controller.perform(action[0], action[1])
+        # self.steps_taken += 1  # increment step counter
 
-        # Get the new observations
         observation = self._update_obs()
 
-        if ignore_done:
-            terminated = False
-        else:
-            terminated = (self.lap_count > 1.0 
-                            or self.track_progress >= self.progress_goal 
-                            or self.lap_time >= 120000
-                            or self.lap_invalid)
+        terminated = (self.track_progress >= self.progress_goal 
+                    # or self.lap_time >= 120000
+                    or self.lap_invalid)
 
-        # Truncated gets updated based on timesteps by TimeLimit wrapper
         truncated = False
-
-        # Get the reward and info
-        reward = None
-        info = None
-        if not ignore_done:
-            reward = self._get_reward(terminated)
-            info = self._get_info()
+        reward = self._get_reward(terminated)
+        info = self._get_info()
 
         return observation, reward, terminated, truncated, info
+    
+    def _get_reward(self, terminated: bool) -> float:
+        step_penalty = 0.01
+        progress_reward = 0.01
+        finishing_reward = 1.0
+
+        if terminated:
+            if self.lap_invalid:
+                return -1000.0
+            else:
+                return finishing_reward
+        elif self.track_progress == self.current_progress:
+            temp = self.current_progress
+            self.current_progress+=1
+            return -step_penalty + progress_reward*temp
+        else:
+            return -step_penalty
 
     def render(self) -> None:
         """
