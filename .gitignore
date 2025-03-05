@@ -2,3 +2,4 @@ virtual_env/*
 get_contents.py
 **/__pycache__/
 master_file.txt
+.DS_Store
