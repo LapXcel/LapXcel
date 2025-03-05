@@ -7,6 +7,7 @@ from torch.optim import Adam
 import time
 import crossq.core as core
 from crossq.utils.logx import EpisodeLogger, colorize
+import random
 
 
 class ReplayBuffer:
@@ -313,19 +314,11 @@ class SacAgent():
                 # Check if the location is too close to 1.0 when the episode has just started, this means the car started before the start/finish line
                 if observation[0] >= 0.9 and ep_steps == 0:
                     while observation[0] >= 0.9:
-                        observation, _, _, _, _ = env.unwrapped.step([0.5, 0.0], ignore_done=True)
+                        observation, _, _, _, _ = env.unwrapped.step([1.0, 0.0], ignore_done=True)
                         time.sleep(0.5)
-                    env.unwrapped.controller.perform(-1.0, 0.0)
-                    time.sleep(1.0)
-                    env.unwrapped.controller.perform(0.0, 0.0)
                     continue
 
-                # Uniform-random action sampling for the first start_steps steps (before running real policy)
-                # This is to encourage exploration
-                if total_steps > self.start_steps:
-                    action = self._get_action(observation)
-                else:
-                    action = env.action_space.sample()
+                action = self._get_action(observation)
 
                 # Step the env
                 observation_, reward, terminated, truncated, _ = env.step(action)
@@ -373,7 +366,6 @@ class SacAgent():
             logger.log_tabular('EpReward', ep_reward)
             logger.log_tabular('EpSteps', ep_steps)
             logger.log_tabular('EpDist', observation[0])
-            logger.log_tabular('EpAvgSpeed', avg_speed)
             logger.log_tabular('DistHigh', dist_highscore)
             logger.log_tabular('StepReward', with_min_and_max=True)
             logger.log_tabular('DeltaProg', with_min_and_max=True)

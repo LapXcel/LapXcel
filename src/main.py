@@ -55,7 +55,7 @@ def main():
         "n_episodes": 10000,
         "update_after": 1000,
         "update_every": 50,
-        "start_steps": 10000,
+        "start_steps": 0,
         "replay_size": int(1e6)
     }
 

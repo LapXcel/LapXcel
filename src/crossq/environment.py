@@ -30,6 +30,7 @@ class Env(gym.Env):
         self.lap_count = 0
         self.lap_time = 0
         self.lap_invalid = False
+        self.max_time = 120000
 
         # Observations is a Box with the following data:
         # - "speed_kmh": The speed of the car in km/h [0.0, max_speed]
@@ -117,12 +118,12 @@ class Env(gym.Env):
     def _get_reward(self, terminated: bool) -> int:
         """
         Reward function for the agent. It will give a reward of
-        120001 (2 minutes) - lap_time if the lap has been completed.
+        self.max_time - lap_time if the lap has been completed.
         """
         if terminated:
-            return 120001 - self.lap_time if not self.lap_invalid else 0
+            return 1000
 
-        return 0
+        return -0.1
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """
@@ -160,10 +161,7 @@ class Env(gym.Env):
         if ignore_done:
             terminated = False
         else:
-            terminated = (self.lap_count > 1.0 
-                            or self.track_progress >= self.progress_goal 
-                            or self.lap_time >= 120000
-                            or self.lap_invalid)
+            terminated = self.lap_count > 1.0 or self.track_progress >= self.progress_goal
 
         # Truncated gets updated based on timesteps by TimeLimit wrapper
         truncated = False

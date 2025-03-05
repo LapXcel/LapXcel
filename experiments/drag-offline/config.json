@@ -1,0 +1,213 @@
+{
+    "ac_kwargs":	{
+        "hidden_sizes":	[
+            256,
+            256
+        ]
+    },
+    "alpha":	0.2,
+    "batch_size":	32,
+    "env":	{
+        "<TimeLimit<Env instance>>":	{
+            "_action_space":	null,
+            "_cached_spec":	null,
+            "_elapsed_steps":	null,
+            "_max_episode_steps":	1000,
+            "_metadata":	null,
+            "_observation_space":	null,
+            "_saved_kwargs":	{
+                "max_episode_steps":	1000
+            },
+            "env":	{
+                "<Env instance>":	{
+                    "action_space":	{
+                        "Box(-1.0, 1.0, (2,), float32)":	{
+                            "_np_random":	null,
+                            "_shape":	[
+                                2
+                            ],
+                            "bounded_above":	"[ True  True]",
+                            "bounded_below":	"[ True  True]",
+                            "dtype":	"float32",
+                            "high":	"[1. 1.]",
+                            "high_repr":	"1.0",
+                            "low":	"[-1. -1.]",
+                            "low_repr":	"-1.0"
+                        }
+                    },
+                    "controller":	{
+                        "<ac_controller.ACController object at 0x0000012ACA47D0A0>":	{
+                            "gamepad":	{
+                                "<vgamepad.win.virtual_gamepad.VX360Gamepad object at 0x0000012ACA47D3D0>":	{
+                                    "CMPFUNC":	"CFunctionType",
+                                    "_busp":	1283817942144,
+                                    "_devicep":	1283815801552,
+                                    "cmp_func":	null,
+                                    "report":	"<vgamepad.win.vigem_commons.XUSB_REPORT object at 0x0000012AEB5373D0>",
+                                    "vbus":	{
+                                        "<vgamepad.win.virtual_gamepad.VBus object at 0x0000012AEB544110>":	{
+                                            "_busp":	1283817942144
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "lap_count":	0,
+                    "lap_invalid":	false,
+                    "lap_time":	0,
+                    "max_speed":	320.0,
+                    "max_time":	120000,
+                    "observation_space":	{
+                        "Box([    0. -2000. -2000. -2000.  -320.  -320.], [ 320. 2000. 2000. 2000.  320.  320.], (6,), float32)":	{
+                            "_np_random":	null,
+                            "_shape":	[
+                                6
+                            ],
+                            "bounded_above":	"[ True  True  True  True  True  True]",
+                            "bounded_below":	"[ True  True  True  True  True  True]",
+                            "dtype":	"float32",
+                            "high":	"[ 320. 2000. 2000. 2000.  320.  320.]",
+                            "high_repr":	"[ 320. 2000. 2000. 2000.  320.  320.]",
+                            "low":	"[    0. -2000. -2000. -2000.  -320.  -320.]",
+                            "low_repr":	"[    0. -2000. -2000. -2000.  -320.  -320.]"
+                        }
+                    },
+                    "progress_goal":	0.99,
+                    "render_mode":	null,
+                    "track_progress":	0.0
+                }
+            }
+        }
+    },
+    "exp_name":	"drag-offline",
+    "gamma":	0.99,
+    "load_path":	null,
+    "logger":	{
+        "<crossq.utils.logx.EpisodeLogger object at 0x0000012AEB599A30>":	{
+            "episode_dict":	{},
+            "exp_name":	"drag-offline",
+            "first_row":	true,
+            "log_current_row":	{},
+            "log_headers":	[],
+            "output_dir":	"C:\\Users\\cjhto\\Documents\\Dev\\LapXcel\\experiments\\drag-offline",
+            "output_file":	{
+                "<_io.TextIOWrapper name='C:\\\\Users\\\\cjhto\\\\Documents\\\\Dev\\\\LapXcel\\\\experiments\\\\drag-offline\\\\progress.txt' mode='w' encoding='cp1252'>":	{
+                    "mode":	"w"
+                }
+            }
+        }
+    },
+    "lr":	0.001,
+    "n_episodes":	10000,
+    "polyak":	0.999,
+    "replay_size":	1000000,
+    "save_freq":	1,
+    "seed":	0,
+    "self":	{
+        "<crossq.sac.SacAgent object at 0x0000012AEA7641A0>":	{
+            "alpha":	0.2,
+            "batch_size":	32,
+            "env":	{
+                "<TimeLimit<Env instance>>":	{
+                    "_action_space":	null,
+                    "_cached_spec":	null,
+                    "_elapsed_steps":	null,
+                    "_max_episode_steps":	1000,
+                    "_metadata":	null,
+                    "_observation_space":	null,
+                    "_saved_kwargs":	{
+                        "max_episode_steps":	1000
+                    },
+                    "env":	{
+                        "<Env instance>":	{
+                            "action_space":	{
+                                "Box(-1.0, 1.0, (2,), float32)":	{
+                                    "_np_random":	null,
+                                    "_shape":	[
+                                        2
+                                    ],
+                                    "bounded_above":	"[ True  True]",
+                                    "bounded_below":	"[ True  True]",
+                                    "dtype":	"float32",
+                                    "high":	"[1. 1.]",
+                                    "high_repr":	"1.0",
+                                    "low":	"[-1. -1.]",
+                                    "low_repr":	"-1.0"
+                                }
+                            },
+                            "controller":	{
+                                "<ac_controller.ACController object at 0x0000012ACA47D0A0>":	{
+                                    "gamepad":	{
+                                        "<vgamepad.win.virtual_gamepad.VX360Gamepad object at 0x0000012ACA47D3D0>":	{
+                                            "CMPFUNC":	"CFunctionType",
+                                            "_busp":	1283817942144,
+                                            "_devicep":	1283815801552,
+                                            "cmp_func":	null,
+                                            "report":	"<vgamepad.win.vigem_commons.XUSB_REPORT object at 0x0000012AEB5373D0>",
+                                            "vbus":	{
+                                                "<vgamepad.win.virtual_gamepad.VBus object at 0x0000012AEB544110>":	{
+                                                    "_busp":	1283817942144
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "lap_count":	0,
+                            "lap_invalid":	false,
+                            "lap_time":	0,
+                            "max_speed":	320.0,
+                            "max_time":	120000,
+                            "observation_space":	{
+                                "Box([    0. -2000. -2000. -2000.  -320.  -320.], [ 320. 2000. 2000. 2000.  320.  320.], (6,), float32)":	{
+                                    "_np_random":	null,
+                                    "_shape":	[
+                                        6
+                                    ],
+                                    "bounded_above":	"[ True  True  True  True  True  True]",
+                                    "bounded_below":	"[ True  True  True  True  True  True]",
+                                    "dtype":	"float32",
+                                    "high":	"[ 320. 2000. 2000. 2000.  320.  320.]",
+                                    "high_repr":	"[ 320. 2000. 2000. 2000.  320.  320.]",
+                                    "low":	"[    0. -2000. -2000. -2000.  -320.  -320.]",
+                                    "low_repr":	"[    0. -2000. -2000. -2000.  -320.  -320.]"
+                                }
+                            },
+                            "progress_goal":	0.99,
+                            "render_mode":	null,
+                            "track_progress":	0.0
+                        }
+                    }
+                }
+            },
+            "gamma":	0.99,
+            "logger":	{
+                "<crossq.utils.logx.EpisodeLogger object at 0x0000012AEB599A30>":	{
+                    "episode_dict":	{},
+                    "exp_name":	"drag-offline",
+                    "first_row":	true,
+                    "log_current_row":	{},
+                    "log_headers":	[],
+                    "output_dir":	"C:\\Users\\cjhto\\Documents\\Dev\\LapXcel\\experiments\\drag-offline",
+                    "output_file":	{
+                        "<_io.TextIOWrapper name='C:\\\\Users\\\\cjhto\\\\Documents\\\\Dev\\\\LapXcel\\\\experiments\\\\drag-offline\\\\progress.txt' mode='w' encoding='cp1252'>":	{
+                            "mode":	"w"
+                        }
+                    }
+                }
+            },
+            "n_episodes":	10000,
+            "polyak":	0.999,
+            "save_freq":	1,
+            "start_steps":	0,
+            "step_duration_limit":	null,
+            "update_after":	1000,
+            "update_every":	50
+        }
+    },
+    "start_steps":	0,
+    "step_duration_limit":	null,
+    "update_after":	1000,
+    "update_every":	50
+}
