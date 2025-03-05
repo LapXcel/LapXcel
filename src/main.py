@@ -6,6 +6,10 @@ from gymnasium.wrappers import TimeLimit
 from crossq.environment import Env
 from crossq.utils.logx import colorize
 from crossq.crossq import SAC
+import optax
+import jax
+from crossq.utils.utils import *
+import time
 
 
 def main():
@@ -21,19 +25,71 @@ def main():
 
     # Initialize the agent
     args = {
-        "adam_b1": 0.5,
-        "policy_delay": 3,
-        "n_critics": 2,
-        "utd": 1,                    # nice
-        "net_arch": {"qf": [2048, 2048]},   # wider critics
-        "bn": True,                # use batch norm
-        "bn_momentum": 0.99,
-        "crossq_style": True,        # with a joint forward pass
-        "tau": 1.0,                  # without target networks
-        "group": f'CrossQ_{args.env}'
-    }
+            'algo': 'crossq',
+            'seed': 1,
+            'log_freq': 300,
+            'wandb_entity': None,
+            'wandb_project': 'crossQ',
+            'wandb_mode': 'disabled',
+            'eval_qbias': 0,
+            'adam_b1': 0.5,
+            'bn': True,
+            'bn_momentum': 0.99,
+            'bn_mode': 'brn_actor',
+            'critic_activation': 'relu',
+            'crossq_style': True,
+            'dropout': 0,
+            'ln': False,
+            'lr': 0.001,
+            'n_critics': 2,
+            'n_neurons': 256,
+            'policy_delay': 3,
+            'tau': 1.0,
+            'utd': 1,
+            'total_timesteps': 5000000.0,
+            'bnstats_live_net': 0,
+            'dropout_rate': None,
+            'layer_norm': False
+        }
 
-    agent = SAC(env, exp_name, load_path, **hyperparams)
+    seed = 1
+    group = f'CrossQ_{args.env}'
+    experiment_time = time.time()
+    agent = SAC(
+        "MultiInputPolicy",
+        env,
+        policy_kwargs=dict({
+            'activation_fn': activation_fn[args.critic_activation],
+            'layer_norm': False,
+            'batch_norm': bool(args.bn),
+            'batch_norm_momentum': float(args.bn_momentum),
+            'batch_norm_mode': args.bn_mode,
+            'dropout_rate': None,
+            'n_critics': args.n_critics,
+            'net_arch': {'pi': [256, 256], 'qf': [2048, 2048]},
+            'optimizer_class': optax.adam,
+            'optimizer_kwargs': dict({
+                'b1': args.adam_b1,
+                'b2': 0.999 # default
+            })
+        }),
+        gradient_steps=args.utd,
+        policy_delay=args.policy_delay,
+        crossq_style=bool(args.crossq_style),
+        td3_mode=False,
+        use_bnstats_from_live_net=bool(args.bnstats_live_net),
+        policy_q_reduce_fn=jax.numpy.min,
+        learning_starts=5000,
+        learning_rate=args.lr,
+        qf_learning_rate=args.lr,
+        tau=args.tau,
+        gamma=0.99,
+        verbose=0,
+        buffer_size=1_000_000,
+        seed=seed,
+        stats_window_size=1,  # don't smooth the episode return stats over time
+        tensorboard_log=f"logs/{group + 'seed=' + str(seed) + '_time=' + str(experiment_time)}/",
+    )
 
     # Establish a socket connection
     sock = ACSocket()
