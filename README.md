@@ -12,6 +12,23 @@ This project aims to develop a software solution to optimize sim racing by analy
     - Install the [Python 3.3.5](https://legacy.python.org/download/releases/3.3.5/) interpreter. This is what Assetto Corsa uses and we need this locally for the socket import to not throw errors in AC.
     - Copy the `ACRL` folder to the `apps/python` folder in your Assetto Corsa installation directory. (e.g. `C:\Program Files (x86)\Steam\steamapps\common\assettocorsa\apps\python`)
     - Run Assetto Corsa and enable the `ACRL` app in the `General` tab of the `Settings` menu. (You can also enable it through the `Content Manager` settings, or in the `Custom Shaders Patch` tab if you have CSP installed).
+4. Execute the following commands to set up the conda environment
+```bash
+conda create -n crossq python=3.11.5
+conda activate crossq
+conda install -c nvidia cuda-nvcc=12.3.52
+
+pip install -e .
+pip install "jax[cuda12_pip]==0.4.19" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+```
+5. Set up a new session in Assetto Corsa through Content Manager:
+    - Select Practice Mode and choose track "Zaandvort" and car "Ferrari SF70H" (Doesn't have to be this track and car, this is just what we tested with.)
+    - Set the number of AI opponents to 0
+    - Turn on `penalties` and `ideal conditions`
+    - Set controls to `Gamepad`
+6. Start the session and wait for the car to spawn on the track. Make sure automatic gear switching is enabled (`ctrl + G`).
+7. Change directory using `cd src`, and run the `src/main.py` file to start listening for an incoming connection from Assetto Corsa.
+8. Start training by clicking the `Start Training` button in the ACRL app window in Assetto Corsa. The car should start driving around the track and the model should start training. You can monitor the training progress in the console window where you started the `main.py` script.
 
 ## Benefits and Outcomes
 - Improve sim racers lap times
