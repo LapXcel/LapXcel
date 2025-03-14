@@ -69,30 +69,30 @@ def main():
             "MultiInputPolicy",
             env,
             policy_kwargs=dict({
-                'activation_fn': activation_fn[args.critic_activation],
+                'activation_fn': activation_fn[args["critic_activation"]],
                 'layer_norm': False,
-                'batch_norm': bool(args.bn),
-                'batch_norm_momentum': float(args.bn_momentum),
-                'batch_norm_mode': args.bn_mode,
+                'batch_norm': bool(args["bn"]),
+                'batch_norm_momentum': float(args["bn_momentum"]),
+                'batch_norm_mode': args["bn_mode"],
                 'dropout_rate': None,
-                'n_critics': args.n_critics,
+                'n_critics': args["n_critics"],
                 'net_arch': {'pi': [256, 256], 'qf': [2048, 2048]},
                 'optimizer_class': optax.adam,
                 'optimizer_kwargs': dict({
-                    'b1': args.adam_b1,
+                    'b1': args["adam_b1"],
                     'b2': 0.999 # default
                 })
             }),
-            gradient_steps=args.utd,
-            policy_delay=args.policy_delay,
-            crossq_style=bool(args.crossq_style),
+            gradient_steps=args["utd"],
+            policy_delay=args["policy_delay"],
+            crossq_style=bool(args["crossq_style"]),
             td3_mode=False,
-            use_bnstats_from_live_net=bool(args.bnstats_live_net),
+            use_bnstats_from_live_net=bool(args["bnstats_live_net"]),
             policy_q_reduce_fn=jax.numpy.min,
             learning_starts=5000,
-            learning_rate=args.lr,
-            qf_learning_rate=args.lr,
-            tau=args.tau,
+            learning_rate=args["lr"],
+            qf_learning_rate=args["lr"],
+            tau=args["tau"],
             gamma=0.99,
             verbose=0,
             buffer_size=1_000_000,
@@ -109,16 +109,16 @@ def main():
 
         # Create callback that evaluates agent
         eval_callback = EvalCallback(
-            make_vec_env(args.env, n_envs=1, seed=seed),
-            jax_random_key_for_seeds=args.seed,
+            make_vec_env("AssetoCorsa", n_envs=1, seed=seed),
+            jax_random_key_for_seeds=args["seed"],
             best_model_sav=eval_log_dir, eval_freq=eval_freq,
             n_eval_episodes=1, deterministic=True, render=False
         )
 
         # Callback that evaluates q bias according to the REDQ paper.
         q_bias_callback = CriticBiasCallback(
-            make_vec_env(args.env, n_envs=1, seed=seed), 
-            jax_random_key_for_seeds=args.seed,
+            make_vec_env("AssetoCorsa", n_envs=1, seed=seed), 
+            jax_random_key_for_seeds=args["seed"],
             best_model_save_path=None,
             log_path=qbias_log_dir, eval_freq=eval_freq,
             n_eval_episodes=1, render=False
@@ -127,7 +127,7 @@ def main():
         callback_list = CallbackList([eval_callback, q_bias_callback, WandbCallback(verbose=0,)])
 
         # Run the training loop
-        agent.learn(total_timesteps=args.total_timesteps, progress_bar=True, callback=callback_list)
+        agent.learn(total_timesteps=args["total_timesteps"], progress_bar=True, callback=callback_list)
 
 
 if __name__ == "__main__":
