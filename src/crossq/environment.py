@@ -144,7 +144,7 @@ class Env(gym.Env):
 
         observation = self._update_obs()
 
-        terminated = (self.track_progress >= self.progress_goal and self.lap_count >= 1
+        terminated = (self.track_progress >= self.progress_goal and self.lap_count >= 2
                     or self.lap_invalid)
 
         truncated = False
