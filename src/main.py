@@ -62,7 +62,7 @@ def main():
             }
 
         seed = 1
-        group = f'CrossQ_{args.env}'
+        group = f'CrossQ_AssetoCorsa'
         experiment_time = time.time()
         eval_freq = max(5_000_000 // args.log_freq, 1)
         agent = SAC(
