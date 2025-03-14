@@ -48,7 +48,7 @@ def main():
                 'policy_delay': 3,
                 'tau': 1.0,
                 'utd': 1,
-                'total_timesteps': 5000000.0,
+                'total_timesteps': 50000.0,
                 'bnstats_live_net': 0,
                 'dropout_rate': None,
                 'layer_norm': False
@@ -57,7 +57,6 @@ def main():
         seed = 1
         group = f'CrossQ_AssetoCorsa'
         experiment_time = time.time()
-        eval_freq = 1
         agent = SAC(
             "MultiInputPolicy",
             env,
