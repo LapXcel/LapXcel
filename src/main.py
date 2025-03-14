@@ -5,6 +5,7 @@ import optax
 import jax
 from crossq.utils.utils import *
 import time
+from gymnasium.wrappers import TimeLimit
 
 
 def main():
@@ -12,11 +13,11 @@ def main():
     The main function of the standalone application.
     It will initialize the environment and the agent, and then run the training loop.
     """
-    # Car data (Ferrari SF70H)
+    # Car data (Ferrari F40)
     max_speed = 320.0
 
     # Initialize the environment, max_episode_steps is the maximum amount of steps before the episode is truncated
-    env = Env(max_speed=max_speed)
+    env = TimeLimit(Env(max_speed=max_speed), max_episode_steps=2000)
 
     # Establish a socket connection
     sock = ACSocket()
@@ -48,15 +49,13 @@ def main():
                 'policy_delay': 3,
                 'tau': 1.0,
                 'utd': 1,
-                'total_timesteps': 50000.0,
+                'total_timesteps': 20000000.0,
                 'bnstats_live_net': 0,
                 'dropout_rate': None,
                 'layer_norm': False
             }
 
         seed = 1
-        group = f'CrossQ_AssetoCorsa'
-        experiment_time = time.time()
         agent = SAC(
             "MultiInputPolicy",
             env,

@@ -159,10 +159,8 @@ class Env(gym.Env):
         finishing_reward = 1.0
 
         if terminated:
-            if self.lap_invalid:
-                return -1000.0
-            else:
-                return finishing_reward
+            print("Finished Lap")
+            return finishing_reward
         elif self.track_progress * 100 >= self.current_progress:
             temp = self.current_progress
             self.current_progress += 1
