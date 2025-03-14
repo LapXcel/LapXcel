@@ -1,6 +1,3 @@
-import os
-
-import numpy as np
 from ac_socket import ACSocket
 from crossq.environment import Env
 from crossq.crossq import SAC
@@ -8,10 +5,6 @@ import optax
 import jax
 from crossq.utils.utils import *
 import time
-from crossq.actor_critic_evaluation_callback import CriticBiasCallback, EvalCallback
-from wandb.integration.sb3 import WandbCallback
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import EvalCallback, CallbackList
 
 
 def main():
@@ -101,33 +94,8 @@ def main():
             tensorboard_log=f"logs/{group + 'seed=' + str(seed) + '_time=' + str(experiment_time)}/",
         )
 
-        # Create log dir where evaluation results will be saved
-        eval_log_dir = f"./eval_logs/{group + 'seed=' + str(seed) + '_time=' + str(experiment_time)}/eval/"
-        qbias_log_dir = f"./eval_logs/{group + 'seed=' + str(seed) + '_time=' + str(experiment_time)}/qbias/"
-        os.makedirs(eval_log_dir, exist_ok=True)
-        os.makedirs(qbias_log_dir, exist_ok=True)
-
-        # Create callback that evaluates agent
-        eval_callback = EvalCallback(
-            make_vec_env("AssetoCorsa", n_envs=1, seed=seed),
-            jax_random_key_for_seeds=args["seed"],
-            best_model_sav=eval_log_dir, eval_freq=eval_freq,
-            n_eval_episodes=1, deterministic=True, render=False
-        )
-
-        # Callback that evaluates q bias according to the REDQ paper.
-        q_bias_callback = CriticBiasCallback(
-            make_vec_env("AssetoCorsa", n_envs=1, seed=seed), 
-            jax_random_key_for_seeds=args["seed"],
-            best_model_save_path=None,
-            log_path=qbias_log_dir, eval_freq=eval_freq,
-            n_eval_episodes=1, render=False
-        )
-
-        callback_list = CallbackList([eval_callback, q_bias_callback, WandbCallback(verbose=0,)])
-
         # Run the training loop
-        agent.learn(total_timesteps=args["total_timesteps"], progress_bar=True, callback=callback_list)
+        agent.learn(total_timesteps=args["total_timesteps"], progress_bar=True)
 
 
 if __name__ == "__main__":
