@@ -58,14 +58,13 @@ def main():
                 'total_timesteps': 5000000.0,
                 'bnstats_live_net': 0,
                 'dropout_rate': None,
-                'layer_norm': False,
-                'log_freq': 100
+                'layer_norm': False
             }
 
         seed = 1
         group = f'CrossQ_AssetoCorsa'
         experiment_time = time.time()
-        eval_freq = max(5_000_000 // args.log_freq, 1)
+        eval_freq = 1
         agent = SAC(
             "MultiInputPolicy",
             env,
