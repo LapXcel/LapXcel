@@ -6,9 +6,9 @@ with open(os.path.join("sbx", "version.txt")) as file_handler:
     __version__ = file_handler.read().strip()
 
 setup(
-    name="sbx-rl",
-    packages=[package for package in find_packages() if package.startswith("sbx")],
-    package_data={"sbx": ["py.typed", "version.txt"]},
+    name="crossq-rl",
+    packages=[package for package in find_packages() if package.startswith("crossq")],
+    package_data={"cross": ["py.typed", "version.txt"]},
     install_requires=[
         "stable_baselines3==2.1.0",
         "flax==0.7.4",
