@@ -2,7 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
-with open(os.path.join("sbx", "version.txt")) as file_handler:
+with open(os.path.join("crossq", "version.txt")) as file_handler:
     __version__ = file_handler.read().strip()
 
 setup(
