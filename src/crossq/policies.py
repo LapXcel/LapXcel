@@ -12,9 +12,9 @@ from flax.training.train_state import TrainState
 from gymnasium import spaces
 from stable_baselines3.common.type_aliases import Schedule
 
-from sbx.common.distributions import TanhTransformedDistribution
-from sbx.common.policies import BaseJaxPolicy
-from sbx.common.type_aliases import RLTrainState, ActorTrainState
+from crossq.distributions import TanhTransformedDistribution
+from crossq.policies import BaseJaxPolicy
+from crossq.type_aliases import RLTrainState, ActorTrainState
 
 tfp = tensorflow_probability.substrates.jax
 tfd = tfp.distributions
