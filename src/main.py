@@ -58,7 +58,8 @@ def main():
                 'total_timesteps': 5000000.0,
                 'bnstats_live_net': 0,
                 'dropout_rate': None,
-                'layer_norm': False
+                'layer_norm': False,
+                'log_freq': 100
             }
 
         seed = 1
