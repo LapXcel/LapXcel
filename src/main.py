@@ -56,6 +56,8 @@ def main():
             }
 
         seed = 1
+        group = f'CrossQ_AssetoCorsa'
+        experiment_time = time.time()
         agent = SAC(
             "MultiInputPolicy",
             env,
