@@ -1,0 +1,36 @@
+# Setting up parameters for reward function (crossQ model)
+"The reward signal is your way of communicating to the robot [agent] what you want it to achieve, not how you want it achieved."
+
+# Initial Attempt
+1. Finish a lap around spa in under 2:00.
+
+We will require reward shaping or it will take too long to train the model.
+
+# Reward
+## Lap Time
+The shorter the lap time, the higher the reward.
+
+## Efficient at taking corners
+Measure how well the car maintains optimal speed through corners (fastest it can go without getting off the track).
+
+## Hitting Apex
+If the tires of the car (2) go on the curb during the corner.
+
+## Fuel Consumption
+Reward efficient fuel usage per lap.
+
+## Throttle & Brake Efficiency
+Smooth inputs get rewarded to encourage stability.
+
+## DRS & ERS Utilization
+Optimal usage of Drag Reduction System (DRS) and Energy Recovery System (ERS).
+
+# Penalize
+## Wall Contact
+Penalize any contact with barriers/walls
+
+## Tire Degradation
+Penalize excessive tire wear.
+
+## Track Limit Violations
+Heavy penalties for exceeding track limits (all 4 wheels off the track).

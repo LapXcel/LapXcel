@@ -19,33 +19,34 @@ from crossq.policies import SACPolicy
 
 
 class EntropyCoef(nn.Module):
-    ent_coef_init: float = 1.0
+    ent_coef_init: float = 1.0  # Initial value for entropy coefficient
 
     @nn.compact
     def __call__(self) -> jnp.ndarray:
+        # Create a parameter for log of the entropy coefficient and return its exponent
         log_ent_coef = self.param("log_ent_coef", init_fn=lambda key: jnp.full((), jnp.log(self.ent_coef_init)))
         return jnp.exp(log_ent_coef)
 
 
 class ConstantEntropyCoef(nn.Module):
-    ent_coef_init: float = 1.0
+    ent_coef_init: float = 1.0  # Initial value for constant entropy coefficient
 
     @nn.compact
     def __call__(self) -> float:
-        # Hack to not optimize the entropy coefficient while not having to use if/else for the jit
+        # Dummy parameter to avoid optimizing the entropy coefficient
         self.param("dummy_param", init_fn=lambda key: jnp.full((), self.ent_coef_init))
         return self.ent_coef_init
 
 
 class SAC(OffPolicyAlgorithmJax):
+    # Mapping of policy aliases to their respective classes
     policy_aliases: ClassVar[Dict[str, Type[SACPolicy]]] = {  # type: ignore[assignment]
         "MlpPolicy": SACPolicy,
-        # Minimal dict support using flatten()
         "MultiInputPolicy": SACPolicy,
     }
 
-    policy: SACPolicy
-    action_space: spaces.Box  # type: ignore[assignment]
+    policy: SACPolicy  # The policy used by the SAC algorithm
+    action_space: spaces.Box  # Action space for the environment
 
     def __init__(
         self,
@@ -53,33 +54,34 @@ class SAC(OffPolicyAlgorithmJax):
         env: Union[GymEnv, str],
         learning_rate: Union[float, Schedule] = 3e-4,
         qf_learning_rate: Optional[float] = None,
-        buffer_size: int = 1_000_000,  # 1e6
-        learning_starts: int = 100,
-        batch_size: int = 256,
-        tau: float = 0.005,
-        gamma: float = 0.99,
-        crossq_style: bool = False,
-        td3_mode: bool = False,
-        use_bnstats_from_live_net: bool = False,
-        policy_q_reduce_fn = jnp.min,
-        train_freq: Union[int, Tuple[int, str]] = 1,
-        gradient_steps: int = 1,
-        policy_delay: int = 1,
-        action_noise: Optional[ActionNoise] = None,
-        replay_buffer_class: Optional[Type[ReplayBuffer]] = None,
-        replay_buffer_kwargs: Optional[Dict[str, Any]] = None,
-        ent_coef: Union[str, float] = "auto",
-        use_sde: bool = False,
-        sde_sample_freq: int = -1,
-        use_sde_at_warmup: bool = False,
-        tensorboard_log: Optional[str] = None,
-        policy_kwargs: Optional[Dict[str, Any]] = None,
-        verbose: int = 0,
-        seed: Optional[int] = None,
-        device: str = "auto",
-        _init_setup_model: bool = True,
-        stats_window_size: int = 100,
+        buffer_size: int = 1_000_000,  # Size of the replay buffer
+        learning_starts: int = 100,  # Number of steps before learning starts
+        batch_size: int = 256,  # Batch size for training
+        tau: float = 0.005,  # Soft update parameter
+        gamma: float = 0.99,  # Discount factor
+        crossq_style: bool = False,  # Flag for CrossQ style
+        td3_mode: bool = False,  # Flag for TD3 mode
+        use_bnstats_from_live_net: bool = False,  # Use batch statistics from live network
+        policy_q_reduce_fn = jnp.min,  # Function to reduce Q-values
+        train_freq: Union[int, Tuple[int, str]] = 1,  # Training frequency
+        gradient_steps: int = 1,  # Number of gradient steps per update
+        policy_delay: int = 1,  # Delay between policy updates
+        action_noise: Optional[ActionNoise] = None,  # Action noise for exploration
+        replay_buffer_class: Optional[Type[ReplayBuffer]] = None,  # Replay buffer class
+        replay_buffer_kwargs: Optional[Dict[str, Any]] = None,  # Additional kwargs for replay buffer
+        ent_coef: Union[str, float] = "auto",  # Entropy coefficient
+        use_sde: bool = False,  # Use Stochastic Differential Equations
+        sde_sample_freq: int = -1,  # Frequency of SDE sampling
+        use_sde_at_warmup: bool = False,  # Use SDE during warmup
+        tensorboard_log: Optional[str] = None,  # Tensorboard logging directory
+        policy_kwargs: Optional[Dict[str, Any]] = None,  # Additional kwargs for policy
+        verbose: int = 0,  # Verbosity level
+        seed: Optional[int] = None,  # Random seed
+        device: str = "auto",  # Device to run on (CPU/GPU)
+        _init_setup_model: bool = True,  # Flag to initialize model setup
+        stats_window_size: int = 100,  # Size of the stats window
     ) -> None:
+        # Initialize the parent class with provided parameters
         super().__init__(
             policy=policy,
             env=env,
@@ -107,6 +109,7 @@ class SAC(OffPolicyAlgorithmJax):
             stats_window_size=stats_window_size,
         )
 
+        # Store additional parameters
         self.policy_delay = policy_delay
         self.ent_coef_init = ent_coef
         self.crossq_style = crossq_style
@@ -114,17 +117,21 @@ class SAC(OffPolicyAlgorithmJax):
         self.use_bnstats_from_live_net = use_bnstats_from_live_net
         self.policy_q_reduce_fn = policy_q_reduce_fn
 
+        # Initialize action noise for TD3 mode
         if td3_mode:
             self.action_noise = NormalActionNoise(mean=jnp.zeros(1), sigma=jnp.ones(1) * 0.1)
 
+        # Setup the model if the flag is set
         if _init_setup_model:
             self._setup_model()
 
     def _setup_model(self) -> None:
+        # Call the parent class's setup model method
         super()._setup_model()
 
+        # Initialize policy if not already set
         if not hasattr(self, "policy") or self.policy is None:
-            # pytype: disable=not-instantiable
+            # Instantiate the policy class
             self.policy = self.policy_class(  # type: ignore[assignment]
                 self.observation_space,
                 self.action_space,
@@ -132,20 +139,19 @@ class SAC(OffPolicyAlgorithmJax):
                 td3_mode=self.td3_mode,
                 **self.policy_kwargs,
             )
-            # pytype: enable=not-instantiable
 
+            # Ensure the Q-learning rate is a float
             assert isinstance(self.qf_learning_rate, float)
 
+            # Build the policy and split the key for randomness
             self.key = self.policy.build(self.key, self.lr_schedule, self.qf_learning_rate)
-
             self.key, ent_key = jax.random.split(self.key, 2)
 
+            # Assign the actor and Q-function from the policy
             self.actor = self.policy.actor  # type: ignore[assignment]
             self.qf = self.policy.qf  # type: ignore[assignment]
 
-            # The entropy coefficient or entropy can be learned automatically
-            # see Automating Entropy Adjustment for Maximum Entropy RL section
-            # of https://arxiv.org/abs/1812.05905
+            # Initialize the entropy coefficient
             if isinstance(self.ent_coef_init, str) and self.ent_coef_init.startswith("auto"):
                 # Default initial value of ent_coef when learned
                 ent_coef_init = 1.0
@@ -153,16 +159,16 @@ class SAC(OffPolicyAlgorithmJax):
                     ent_coef_init = float(self.ent_coef_init.split("_")[1])
                     assert ent_coef_init > 0.0, "The initial value of ent_coef must be greater than 0"
 
-                # Note: we optimize the log of the entropy coeff which is slightly different from the paper
-                # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
+                # Optimize the log of the entropy coefficient
                 self.ent_coef = EntropyCoef(ent_coef_init)
             else:
-                # This will throw an error if a malformed string (different from 'auto') is passed
+                # Ensure a valid float is provided for the entropy coefficient
                 assert isinstance(
                     self.ent_coef_init, float
                 ), f"Entropy coef must be float when not equal to 'auto', actual: {self.ent_coef_init}"
                 self.ent_coef = ConstantEntropyCoef(self.ent_coef_init)  # type: ignore[assignment]
 
+            # Create a training state for the entropy coefficient
             self.ent_coef_state = TrainState.create(
                 apply_fn=self.ent_coef.apply,
                 params=self.ent_coef.init(ent_key)["params"],
@@ -171,7 +177,7 @@ class SAC(OffPolicyAlgorithmJax):
                 ),
             )
 
-        # automatically set target entropy if needed
+        # Set the target entropy based on the action space
         self.target_entropy = -np.prod(self.action_space.shape).astype(np.float32)
 
     def learn(
@@ -183,6 +189,7 @@ class SAC(OffPolicyAlgorithmJax):
         reset_num_timesteps: bool = True,
         progress_bar: bool = False,
     ):
+        # Call the parent class's learn method
         return super().learn(
             total_timesteps=total_timesteps,
             callback=callback,
@@ -193,14 +200,14 @@ class SAC(OffPolicyAlgorithmJax):
         )
 
     def train(self, batch_size, gradient_steps):
-        # Sample all at once for efficiency (so we can jit the for loop)
+        # Sample data from the replay buffer
         data = self.replay_buffer.sample(batch_size * gradient_steps, env=self._vec_normalize_env)
-        # Pre-compute the indices where we need to update the actor
-        # This is a hack in order to jit the train loop
-        # It will compile once per value of policy_delay_indices
+
+        # Pre-compute indices for updating the actor
         policy_delay_indices = {i: True for i in range(gradient_steps) if ((self._n_updates + i + 1) % self.policy_delay) == 0}
         policy_delay_indices = flax.core.FrozenDict(policy_delay_indices)
 
+        # Prepare observations for training
         if isinstance(data.observations, dict):
             keys = list(self.observation_space.keys())
             obs = np.concatenate([data.observations[key].numpy() for key in keys], axis=1)
@@ -209,7 +216,7 @@ class SAC(OffPolicyAlgorithmJax):
             obs = data.observations.numpy()
             next_obs = data.next_observations.numpy()
 
-        # Convert to numpy
+        # Convert sampled data to numpy format
         data = ReplayBufferSamplesNp(
             obs,
             data.actions.numpy(),
@@ -218,6 +225,7 @@ class SAC(OffPolicyAlgorithmJax):
             data.rewards.numpy().flatten(),
         )
 
+        # Train the policy and update states
         (
             self.policy.qf_state,
             self.policy.actor_state,
@@ -242,6 +250,7 @@ class SAC(OffPolicyAlgorithmJax):
         )
         self._n_updates += gradient_steps
         
+        # Log training metrics
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         for k,v in log_metrics.items():
             self.logger.record(f"train/{k}", v.item())
@@ -263,31 +272,38 @@ class SAC(OffPolicyAlgorithmJax):
         dones: np.ndarray,
         key: jax.random.KeyArray,
     ):
+        # Split key for randomness
         key, noise_key, dropout_key_target, dropout_key_current, redq_key = jax.random.split(key, 5)
-        # sample action from the actor
+        
+        # Sample action from the actor for the next observations
         dist = actor_state.apply_fn(
             {"params": actor_state.params, "batch_stats": actor_state.batch_stats},
             next_observations, train=False
         )
 
         if td3_mode:
+            # TD3 specific parameters
             ent_coef_value = 0.0
             target_policy_noise = 0.2
             target_noise_clip = 0.5
 
+            # Get actions and add noise
             next_state_actions = dist.mode()
             noise = jax.random.normal(noise_key, next_state_actions.shape) * target_policy_noise
             noise = jnp.clip(noise, -target_noise_clip, target_noise_clip)
             next_state_actions = jnp.clip(next_state_actions + noise, -1.0, 1.0)
             next_log_prob = jnp.zeros(next_state_actions.shape[0])
         else:
+            # For SAC, get the entropy coefficient
             ent_coef_value = ent_coef_state.apply_fn({"params": ent_coef_state.params})
 
+            # Sample actions from the distribution
             next_state_actions = dist.sample(seed=noise_key)
             next_log_prob = dist.log_prob(next_state_actions)
 
         def mse_loss(params, batch_stats, dropout_key):
             if not crossq_style:
+                # Get Q-values for next state actions
                 next_q_values = qf_state.apply_fn(
                     {
                         "params": qf_state.target_params, 
@@ -298,7 +314,7 @@ class SAC(OffPolicyAlgorithmJax):
                     train=False
                 )
 
-                # shape is (n_critics, batch_size, 1)
+                # Get current Q-values and updates
                 current_q_values, state_updates = qf_state.apply_fn(
                     {"params": params, "batch_stats": batch_stats}, 
                     observations, actions, 
@@ -308,10 +324,7 @@ class SAC(OffPolicyAlgorithmJax):
                 )
 
             else:
-                # ----- CrossQ's One Weird Trick™ -----
-                # concatenate current and next observations to double the batch size
-                # new shape of input is (n_critics, 2*batch_size, obs_dim + act_dim)
-                # apply critic to this bigger batch
+                # CrossQ style: concatenate observations and actions
                 catted_q_values, state_updates = qf_state.apply_fn(
                     {"params": params, "batch_stats": batch_stats}, 
                     jnp.concatenate([observations, next_observations], axis=0), 
@@ -327,20 +340,25 @@ class SAC(OffPolicyAlgorithmJax):
                 m_critics = 2  
                 next_q_values = jax.random.choice(redq_key, next_q_values, (m_critics,), replace=False, axis=0)
 
+            # Compute the target Q-values
             next_q_values = jnp.min(next_q_values, axis=0)
             next_q_values = next_q_values - ent_coef_value * next_log_prob.reshape(-1, 1)
             target_q_values = rewards.reshape(-1, 1) + (1 - dones.reshape(-1, 1)) * gamma * next_q_values  # shape is (batch_size, 1)
 
+            # Calculate the mean squared error loss
             loss = 0.5 * ((jax.lax.stop_gradient(target_q_values) - current_q_values) ** 2).mean(axis=1).sum()
 
             return loss, (state_updates, current_q_values, next_q_values)
         
+        # Calculate gradients and loss for the critic
         (qf_loss_value, (state_updates, current_q_values, next_q_values)), grads = \
             jax.value_and_grad(mse_loss, has_aux=True)(qf_state.params, qf_state.batch_stats, dropout_key_current)
         
+        # Apply gradients to the Q-function state
         qf_state = qf_state.apply_gradients(grads=grads)
         qf_state = qf_state.replace(batch_stats=state_updates["batch_stats"])
 
+        # Prepare metrics for logging
         metrics = {
             'critic_loss': qf_loss_value, 
             'ent_coef': ent_coef_value, 
@@ -358,12 +376,14 @@ class SAC(OffPolicyAlgorithmJax):
         ent_coef_state: TrainState,
         observations: np.ndarray,
         key: jax.random.KeyArray,
-        q_reduce_fn = jnp.min,  # Changes for redq and droq
-        td3_mode = False,
+        q_reduce_fn = jnp.min,  # Function to reduce Q-values
+        td3_mode = False,  # Flag for TD3 mode
     ):
+        # Split key for randomness
         key, dropout_key, noise_key, redq_key = jax.random.split(key, 4)
 
         def actor_loss(params, batch_stats):
+            # Get action distribution from the actor
             dist, state_updates = actor_state.apply_fn({
                 "params": params, "batch_stats": batch_stats},
                 observations,
@@ -372,14 +392,17 @@ class SAC(OffPolicyAlgorithmJax):
             )
 
             if td3_mode:
+                # TD3 specific actions and entropy
                 actor_actions = dist.mode()
                 ent_coef_value = 0.0
                 log_prob = jnp.zeros(actor_actions.shape[0])
             else:
+                # Sample actions and get entropy coefficient
                 actor_actions = dist.sample(seed=noise_key)
                 ent_coef_value = ent_coef_state.apply_fn({"params": ent_coef_state.params})
                 log_prob = dist.log_prob(actor_actions).reshape(-1, 1)
 
+            # Get Q-values for the actions taken by the actor
             qf_pi = qf_state.apply_fn(
                 {
                     "params": qf_state.params,
@@ -390,12 +413,17 @@ class SAC(OffPolicyAlgorithmJax):
                 rngs={"dropout": dropout_key}, train=False
             )
             
+            # Reduce Q-values to a single value
             min_qf_pi = q_reduce_fn(qf_pi, axis=0)
 
+            # Compute the actor loss
             actor_loss = (ent_coef_value * log_prob - min_qf_pi).mean()
             return actor_loss, (-log_prob.mean(), state_updates)
 
+        # Calculate gradients and loss for the actor
         (actor_loss_value, (entropy, state_updates)), grads = jax.value_and_grad(actor_loss, has_aux=True)(actor_state.params, actor_state.batch_stats)
+        
+        # Apply gradients to the actor state
         actor_state = actor_state.apply_gradients(grads=grads)
         actor_state = actor_state.replace(batch_stats=state_updates["batch_stats"])
 
@@ -404,6 +432,7 @@ class SAC(OffPolicyAlgorithmJax):
     @staticmethod
     @jax.jit
     def soft_update(tau: float, qf_state: RLTrainState):
+        # Perform a soft update of the target Q-function parameters
         qf_state = qf_state.replace(target_params=optax.incremental_update(qf_state.params, qf_state.target_params, tau))
         qf_state = qf_state.replace(target_batch_stats=optax.incremental_update(qf_state.batch_stats, qf_state.target_batch_stats, tau))
         return qf_state
@@ -411,11 +440,13 @@ class SAC(OffPolicyAlgorithmJax):
     @staticmethod
     @jax.jit
     def update_temperature(target_entropy: np.ndarray, ent_coef_state: TrainState, entropy: float):
+        # Loss function for updating the entropy coefficient
         def temperature_loss(temp_params):
             ent_coef_value = ent_coef_state.apply_fn({"params": temp_params})
             ent_coef_loss = ent_coef_value * (entropy - target_entropy).mean()
             return ent_coef_loss
 
+        # Calculate gradients and loss for the entropy coefficient
         ent_coef_loss, grads = jax.value_and_grad(temperature_loss)(ent_coef_state.params)
         ent_coef_state = ent_coef_state.apply_gradients(grads=grads)
 
@@ -442,13 +473,16 @@ class SAC(OffPolicyAlgorithmJax):
     ):
         actor_loss_value = jnp.array(0)
 
+        # Iterate through the number of gradient steps
         for i in range(gradient_steps):
 
             def slice(x, step=i):
+                # Slice the data for the current gradient step
                 assert x.shape[0] % gradient_steps == 0
                 batch_size = x.shape[0] // gradient_steps
                 return x[batch_size * step : batch_size * (step + 1)]
 
+            # Update the critic network
             (
                 qf_state,
                 log_metrics_critic,
@@ -468,9 +502,10 @@ class SAC(OffPolicyAlgorithmJax):
                 slice(data.dones),
                 key,
             )
+            # Soft update the target Q-function
             qf_state = SAC.soft_update(tau, qf_state)
 
-            # hack to be able to jit (n_updates % policy_delay == 0)
+            # Update the actor if conditions are met
             if i in policy_delay_indices:
                 (actor_state, qf_state, actor_loss_value, key, entropy) = cls.update_actor(
                     actor_state,
@@ -481,8 +516,10 @@ class SAC(OffPolicyAlgorithmJax):
                     q_reduce_fn,
                     td3_mode,
                 )
+                # Update the entropy coefficient
                 ent_coef_state, _ = SAC.update_temperature(target_entropy, ent_coef_state, entropy)
 
+        # Collect metrics for logging
         log_metrics = {
             'actor_loss' : actor_loss_value,
             **log_metrics_critic
@@ -497,7 +534,9 @@ class SAC(OffPolicyAlgorithmJax):
         )
     
     def predict_critic(self, observation, action):
+        # Predict the Q-value for a given observation and action
         return self.policy.predict_critic(observation, action)
     
     def current_entropy_coeff(self):
+        # Get the current value of the entropy coefficient
         return self.ent_coef_state.apply_fn({"params": self.ent_coef_state.params})

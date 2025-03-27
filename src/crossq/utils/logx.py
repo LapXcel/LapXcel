@@ -1,10 +1,9 @@
 """
-
 Some simple logging functionality, inspired by rllab's logging.
 
 Logs to a tab-separated-values file (path/to/output_directory/progress.txt)
-
 """
+
 import json
 import joblib
 import numpy as np
@@ -17,6 +16,7 @@ import warnings
 from crossq.utils.mpi_tools import proc_id, mpi_statistics_scalar
 from crossq.utils.serialization_utils import convert_json
 
+# A dictionary mapping color names to their respective ANSI escape codes for terminal output
 color2num = dict(
     gray=30,
     red=31,
@@ -29,22 +29,21 @@ color2num = dict(
     crimson=38
 )
 
-
 def colorize(string, color, bold=False, highlight=False):
     """
     Colorize a string.
 
-    This function was originally written by John Schulman.
+    This function applies ANSI color codes to a string for terminal output.
+    Originally written by John Schulman.
     """
     attr = []
-    num = color2num[color]
+    num = color2num[color]  # Get the color code
     if highlight:
-        num += 10
+        num += 10  # Adjust for highlighted colors
     attr.append(str(num))
     if bold:
-        attr.append('1')
-    return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)
-
+        attr.append('1')  # Add bold attribute
+    return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)  # Return the colorized string
 
 class Logger:
     """
@@ -69,37 +68,40 @@ class Logger:
 
             exp_name (string): Experiment name. If you run multiple training
                 runs and give them all the same ``exp_name``, the plotter
-                will know to group them. (Use case: if you run the same
-                hyperparameter configuration with multiple random seeds, you
-                should give them all the same ``exp_name``.)
+                will know to group them.
         """
+        # Check if the process ID is 0 (main process)
         if proc_id() == 0:
+            # Set output directory, create if it doesn't exist
             self.output_dir = output_dir or osp.join(
                 os.getcwd(), "experiments", exp_name or "experiment_%i" % int(time.time()))
             if osp.exists(self.output_dir):
+                # Warn if the output directory already exists
                 print(colorize(
                     "Warning: Log dir %s already exists!" % self.output_dir, "yellow", bold=True))
                 if input(colorize("Continue? [y/n] ", "gray")) != "y":
-                    exit(-1)
+                    exit(-1)  # Exit if user chooses not to continue
             else:
-                os.makedirs(self.output_dir)
+                os.makedirs(self.output_dir)  # Create the directory
+            # Open the output file for writing
             self.output_file = open(
                 osp.join(self.output_dir, output_fname), 'w')
-            atexit.register(self.output_file.close)
+            atexit.register(self.output_file.close)  # Ensure file is closed on exit
             print(colorize("Logging data to %s" %
                   self.output_file.name, 'green', bold=True))
         else:
+            # For non-main processes, set output_dir and output_file to None
             self.output_dir = None
             self.output_file = None
-        self.first_row = True
-        self.log_headers = []
-        self.log_current_row = {}
-        self.exp_name = exp_name
+        self.first_row = True  # Flag to indicate the first row of logs
+        self.log_headers = []  # List to store log headers
+        self.log_current_row = {}  # Dictionary to store current log values
+        self.exp_name = exp_name  # Store experiment name
 
     def log(self, msg, color='green'):
         """Print a colorized message to stdout."""
         if proc_id() == 0:
-            print(colorize(msg, color, bold=True))
+            print(colorize(msg, color, bold=True))  # Print message in color
 
     def log_tabular(self, key, val):
         """
@@ -111,11 +113,13 @@ class Logger:
         stdout (otherwise they will not get saved anywhere).
         """
         if self.first_row:
-            self.log_headers.append(key)
+            self.log_headers.append(key)  # Add header on first log
         else:
+            # Ensure that the key is already logged
             assert key in self.log_headers, "Trying to introduce a new key %s that you didn't include in the first iteration" % key
+        # Ensure that the key is not already set in the current row
         assert key not in self.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()" % key
-        self.log_current_row[key] = val
+        self.log_current_row[key] = val  # Store the value for the key
 
     def save_config(self, config):
         """
@@ -123,46 +127,41 @@ class Logger:
 
         Call this once at the top of your experiment, passing in all important
         config vars as a dict. This will serialize the config to JSON, while
-        handling anything which can't be serialized in a graceful way (writing
-        as informative a string as possible). 
+        handling anything which can't be serialized in a graceful way.
 
         Example use:
-
-        .. code-block:: python
-
             logger = EpisodeLogger(**logger_kwargs)
             logger.save_config(locals())
         """
-        config_json = convert_json(config)
+        config_json = convert_json(config)  # Convert config to JSON format
         if self.exp_name is not None:
-            config_json['exp_name'] = self.exp_name
+            config_json['exp_name'] = self.exp_name  # Add experiment name if provided
         if proc_id() == 0:
             output = json.dumps(config_json, separators=(
-                ',', ':\t'), indent=4, sort_keys=True)
-            print(colorize('Saving config', color='cyan', bold=True))
-            # print(output)
+                ',', ':\t'), indent=4, sort_keys=True)  # Serialize config to JSON string
+            print(colorize('Saving config', color='cyan', bold=True))  # Log saving action
             with open(osp.join(self.output_dir, "config.json"), 'w') as out:
-                out.write(output)
+                out.write(output)  # Write JSON config to file
 
     def save_drive_data(self, e, speed, x_path, y_path, z_path):
         """
         Save the data from a driving episode to a JSON file.
         """
-        # All input are arrays of float32 values, but since JSON does not support float32, we convert all values to strings
+        # Convert float32 arrays to strings for JSON serialization
         speed = speed.astype(str).tolist()
         x_path = x_path.astype(str).tolist()
         y_path = y_path.astype(str).tolist()
         z_path = z_path.astype(str).tolist()
 
-        # Create the file name
+        # Create the file name for saving drive data
         fname = osp.join(self.output_dir, "drive_data.json")
 
-        # If the JSON file already exists, load the data from it
+        # If the JSON file already exists, load the existing data
         if osp.exists(fname):
             with open(fname, 'r') as file:
-                data = json.load(file)
+                data = json.load(file)  # Load existing data
 
-            # Add the new data to the dictionary
+            # Add new data to the episodes list
             data["episodes"].append({
                 "episode": e,
                 "speed": speed,
@@ -171,7 +170,7 @@ class Logger:
                 "z_path": z_path
             })
         else:
-            # Create a new dictionary where the key is the episode number and the value is the data
+            # Create a new dictionary for the first episode
             data = {
                 "episodes": [{
                     "episode": e,
@@ -182,9 +181,9 @@ class Logger:
                 }]
             }
 
-        # Save the data to the file
+        # Save the updated data to the file
         with open(fname, 'w') as outfile:
-            json.dump(data, outfile, indent=4, sort_keys=True)
+            json.dump(data, outfile, indent=4, sort_keys=True)  # Write JSON data to file
 
     def load_config(self):
         """
@@ -196,23 +195,23 @@ class Logger:
         Returns:
             dict: Experiment configuration loaded from the file.
         """
-        config_path = osp.join(self.output_dir, "config.json")
+        config_path = osp.join(self.output_dir, "config.json")  # Path to config file
         if osp.exists(config_path):
             with open(config_path, 'r') as infile:
-                config_json = json.load(infile)
+                config_json = json.load(infile)  # Load configuration data
 
             # Remove the 'exp_name' key if it was added during saving
             config = config_json.copy()
             if 'exp_name' in config:
                 del config['exp_name']
 
-            print(colorize('Loaded config:\n', color='cyan', bold=True))
+            print(colorize('Loaded config:\n', color='cyan', bold=True))  # Log loading action
             print(json.dumps(config, separators=(
-                ',', ':\t'), indent=4, sort_keys=True))
+                ',', ':\t'), indent=4, sort_keys=True))  # Print loaded config
 
-            return config
+            return config  # Return the loaded configuration
         else:
-            print(colorize('Config file not found.', color='red'))
+            print(colorize('Config file not found.', color='red'))  # Warn if config file is missing
             return None
 
     def save_state(self, state_dict, save_env=False, itr=None):
@@ -236,15 +235,16 @@ class Logger:
 
             itr: An int, or None. Current iteration of training.
         """
-        if proc_id() == 0:
+        if proc_id() == 0:  # Check if main process
             if save_env:
+                # Save environment state if requested
                 fname = 'env.pkl' if itr is None else 'env%d.pkl' % itr
                 try:
-                    joblib.dump(state_dict, osp.join(self.output_dir, fname))
+                    joblib.dump(state_dict, osp.join(self.output_dir, fname))  # Save state to file
                 except:
-                    self.log('Warning: could not pickle state_dict.', color='red')
+                    self.log('Warning: could not pickle state_dict.', color='red')  # Warn if saving fails
             if hasattr(self, 'pytorch_saver_elements'):
-                self._pytorch_simple_save(itr)
+                self._pytorch_simple_save(itr)  # Save PyTorch model state
 
     def setup_pytorch_saver(self, what_to_save):
         """
@@ -260,29 +260,24 @@ class Logger:
             what_to_save: Any PyTorch model or serializable object containing
                 PyTorch models.
         """
-        self.pytorch_saver_elements = what_to_save
+        self.pytorch_saver_elements = what_to_save  # Store reference to model(s) to save
 
     def _pytorch_simple_save(self, itr=None):
         """
         Saves the PyTorch model (or models).
         """
-        if proc_id() == 0:
+        if proc_id() == 0:  # Check if main process
             assert hasattr(self, 'pytorch_saver_elements'), \
-                "First have to setup saving with self.setup_pytorch_saver"
-            fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'
-            fname = osp.join(self.output_dir, fname)
-            os.makedirs(self.output_dir, exist_ok=True)
+                "First have to setup saving with self.setup_pytorch_saver"  # Ensure setup was called
+            fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'  # Construct filename
+            fname = osp.join(self.output_dir, fname)  # Full path for saving
+            os.makedirs(self.output_dir, exist_ok=True)  # Ensure output directory exists
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
+                warnings.simplefilter("ignore")  # Suppress warnings during saving
                 # We are using a non-recommended way of saving PyTorch models,
                 # by pickling whole objects (which are dependent on the exact
-                # directory structure at the time of saving) as opposed to
-                # just saving network weights. This works sufficiently well
-                # for the purposes of Spinning Up, but you may want to do
-                # something different for your personal PyTorch project.
-                # We use a catch_warnings() context to avoid the warnings about
-                # not being able to save the source code.
-                torch.save(self.pytorch_saver_elements, fname)
+                # directory structure at the time of saving).
+                torch.save(self.pytorch_saver_elements, fname)  # Save the model(s)
 
     def dump_tabular(self):
         """
@@ -290,28 +285,27 @@ class Logger:
 
         Writes both to stdout, and to the output file.
         """
-        if proc_id() == 0:
-            vals = []
-            key_lens = [len(key) for key in self.log_headers]
-            max_key_len = max(15, max(key_lens))
-            keystr = '%'+'%d' % max_key_len
-            fmt = "| " + keystr + "s | %15s |"
-            n_slashes = 22 + max_key_len
-            print("-"*n_slashes)
+        if proc_id() == 0:  # Check if main process
+            vals = []  # List to hold logged values
+            key_lens = [len(key) for key in self.log_headers]  # Get lengths of all keys
+            max_key_len = max(15, max(key_lens))  # Determine max key length for formatting
+            keystr = '%'+'%d' % max_key_len  # Format string for key
+            fmt = "| " + keystr + "s | %15s |"  # Format string for output
+            n_slashes = 22 + max_key_len  # Calculate total length for table
+            print("-"*n_slashes)  # Print top border of the table
             for key in self.log_headers:
-                val = self.log_current_row.get(key, "")
-                valstr = "%8.3g" % val if hasattr(val, "__float__") else val
-                print(fmt % (key, valstr))
-                vals.append(val)
-            print("-"*n_slashes, flush=True)
+                val = self.log_current_row.get(key, "")  # Get the value for the key
+                valstr = "%8.3g" % val if hasattr(val, "__float__") else val  # Format value for output
+                print(fmt % (key, valstr))  # Print the key-value pair
+                vals.append(val)  # Append value to list for saving
+            print("-"*n_slashes, flush=True)  # Print bottom border of the table
             if self.output_file is not None:
                 if self.first_row:
-                    self.output_file.write("\t".join(self.log_headers)+"\n")
-                self.output_file.write("\t".join(map(str, vals))+"\n")
-                self.output_file.flush()
-        self.log_current_row.clear()
-        self.first_row = False
-
+                    self.output_file.write("\t".join(self.log_headers)+"\n")  # Write headers to file
+                self.output_file.write("\t".join(map(str, vals))+"\n")  # Write values to file
+                self.output_file.flush()  # Ensure data is written to file
+        self.log_current_row.clear()  # Clear current row for next iteration
+        self.first_row = False  # Set first row flag to False for subsequent logs
 
 class EpisodeLogger(Logger):
     """
@@ -339,8 +333,8 @@ class EpisodeLogger(Logger):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.episode_dict = dict()
+        super().__init__(*args, **kwargs)  # Initialize the base Logger
+        self.episode_dict = dict()  # Dictionary to store values for the current episode
 
     def store(self, **kwargs):
         """
@@ -351,8 +345,8 @@ class EpisodeLogger(Logger):
         """
         for k, v in kwargs.items():
             if not (k in self.episode_dict.keys()):
-                self.episode_dict[k] = []
-            self.episode_dict[k].append(v)
+                self.episode_dict[k] = []  # Initialize list for new key
+            self.episode_dict[k].append(v)  # Append value to the list for the key
 
     def log_tabular(self, key, val=None, with_min_and_max=False, average_only=False):
         """
@@ -374,27 +368,27 @@ class EpisodeLogger(Logger):
                 of the diagnostic over the episode.
         """
         if val is not None:
-            super().log_tabular(key, val)
+            super().log_tabular(key, val)  # Log the provided value
         else:
-            v = self.episode_dict[key]
+            v = self.episode_dict[key]  # Retrieve stored values for the key
             vals = np.concatenate(v) if isinstance(
-                v[0], np.ndarray) and len(v[0].shape) > 0 else v
+                v[0], np.ndarray) and len(v[0].shape) > 0 else v  # Flatten values if they are arrays
             stats = mpi_statistics_scalar(
-                vals, with_min_and_max=with_min_and_max)
+                vals, with_min_and_max=with_min_and_max)  # Calculate statistics
             super().log_tabular(
-                key if average_only else 'Average' + key, stats[0])
+                key if average_only else 'Average' + key, stats[0])  # Log average
             if not (average_only):
-                super().log_tabular('Std'+key, stats[1])
+                super().log_tabular('Std'+key, stats[1])  # Log standard deviation
             if with_min_and_max:
-                super().log_tabular('Max'+key, stats[3])
-                super().log_tabular('Min'+key, stats[2])
-        self.episode_dict[key] = []
+                super().log_tabular('Max'+key, stats[3])  # Log maximum value
+                super().log_tabular('Min'+key, stats[2])  # Log minimum value
+        self.episode_dict[key] = []  # Clear stored values for the key
 
     def get_stats(self, key):
         """
         Lets an algorithm ask the logger for mean/std/min/max of a diagnostic.
         """
-        v = self.episode_dict[key]
+        v = self.episode_dict[key]  # Retrieve stored values for the key
         vals = np.concatenate(v) if isinstance(
-            v[0], np.ndarray) and len(v[0].shape) > 0 else v
-        return mpi_statistics_scalar(vals)
+            v[0], np.ndarray) and len(v[0].shape) > 0 else v  # Flatten values if they are arrays
+        return mpi_statistics_scalar(vals)  # Return computed statistics
