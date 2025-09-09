@@ -23,7 +23,8 @@ setup(
         "tensorflow-probability==0.21.0",
         "wandb==0.15.10",
         "scipy==1.11.4",
-        "shimmy==1.3.0"
+        "shimmy==1.3.0",
+        mpi4py4.1.0
     ],
     extras_require={
         "tests": [
@@ -50,9 +51,9 @@ setup(
     "gym openai stable baselines toolbox python data-science",
     license="MIT",
     version=__version__,
-    python_requires="==3.11.5",
+    python_requires="==3.12.3",
     # PyPI package information.
     classifiers=[
-        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
 )

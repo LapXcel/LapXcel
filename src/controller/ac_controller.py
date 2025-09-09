@@ -1,7 +1,6 @@
 import time
 import vgamepad
 import keyboard
-import numpy as np
 
 
 class ACController:

@@ -4,8 +4,8 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from ac_controller import ACController
 from ac_socket import ACSocket
+from controller_socket import ControllerSocket
 from crossq.utils.logx import colorize
 
 
@@ -25,17 +25,17 @@ class Env(gym.Env):
             low=np.array([0.0, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed]),
             high=np.array([max_speed, 2000.0, 2000.0, 2000.0, max_speed, max_speed]),
             shape=(6,),
-            dtype=np.float32,
+            dtype=np.float16,
         )
         self.action_space = spaces.Box(
             low=np.array([-1.0, -1.000]),
             high=np.array([1.0, 1.000]),
             shape=(2,),
-            dtype=np.float32
+            dtype=np.float16
         )
 
-        self.controller = ACController()
-
+        self.controller = ControllerSocket()
+    
         # Initialize reward variables
         self.max_speed = max_speed
         self.track_progress = 0.000
@@ -66,7 +66,7 @@ class Env(gym.Env):
             low=np.array([-1.0, -1.000]),
             high=np.array([1.0, 1.000]),
             shape=(2,),
-            dtype=np.float32
+            dtype=np.float16
         )
 
         # Assert that the render mode is valid
@@ -130,7 +130,7 @@ class Env(gym.Env):
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.controller.reset_car()
+        self.controller.update({"reset_car": 0})
         # self.steps_taken = 0  # reset step counter
         self._invalid_flag = 0.0
         observation = self._update_obs()
@@ -139,7 +139,7 @@ class Env(gym.Env):
 
     def step(self, action: np.ndarray, ignore_done: bool = False):
         # Apply the action in the game.
-        self.controller.perform(action[0], action[1])
+        self.controller.update({"perform": [action[0], action[1]]})
         # self.steps_taken += 1  # increment step counter
 
         observation = self._update_obs()

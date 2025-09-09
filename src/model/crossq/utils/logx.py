@@ -6,9 +6,7 @@ Logs to a tab-separated-values file (path/to/output_directory/progress.txt)
 
 """
 import json
-import joblib
 import numpy as np
-import torch
 import os.path as osp
 import time
 import atexit
@@ -236,53 +234,18 @@ class Logger:
 
             itr: An int, or None. Current iteration of training.
         """
-        if proc_id() == 0:
-            if save_env:
-                fname = 'env.pkl' if itr is None else 'env%d.pkl' % itr
-                try:
-                    joblib.dump(state_dict, osp.join(self.output_dir, fname))
-                except:
-                    self.log('Warning: could not pickle state_dict.', color='red')
-            if hasattr(self, 'pytorch_saver_elements'):
-                self._pytorch_simple_save(itr)
+        return
 
-    def setup_pytorch_saver(self, what_to_save):
+    def setup_saver(self, what_to_save):
         """
-        Set up easy model saving for a single PyTorch model.
+        """
+        return
 
-        Because PyTorch saving and loading is especially painless, this is
-        very minimal; we just need references to whatever we would like to 
-        pickle. This is integrated into the logger because the logger
-        knows where the user would like to save information about this
-        training run.
-
-        Args:
-            what_to_save: Any PyTorch model or serializable object containing
-                PyTorch models.
+    def _simple_save(self, itr=None):
         """
-        self.pytorch_saver_elements = what_to_save
-
-    def _pytorch_simple_save(self, itr=None):
+        Saves the model (or models).
         """
-        Saves the PyTorch model (or models).
-        """
-        if proc_id() == 0:
-            assert hasattr(self, 'pytorch_saver_elements'), \
-                "First have to setup saving with self.setup_pytorch_saver"
-            fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'
-            fname = osp.join(self.output_dir, fname)
-            os.makedirs(self.output_dir, exist_ok=True)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # We are using a non-recommended way of saving PyTorch models,
-                # by pickling whole objects (which are dependent on the exact
-                # directory structure at the time of saving) as opposed to
-                # just saving network weights. This works sufficiently well
-                # for the purposes of Spinning Up, but you may want to do
-                # something different for your personal PyTorch project.
-                # We use a catch_warnings() context to avoid the warnings about
-                # not being able to save the source code.
-                torch.save(self.pytorch_saver_elements, fname)
+        return
 
     def dump_tabular(self):
         """
