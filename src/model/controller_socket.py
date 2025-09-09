@@ -41,7 +41,6 @@ class ControllerSocket:
             msg = json.dumps(cmd_clean).encode()
             self.sock.sendall(msg)
             print(colorize(f"[Controller] Sent {cmd_clean}", "cyan"))
-            self.sock.recv(1024)
 
         except Exception as e:
             print(colorize(f"[Controller] Error: {e}", "red"))

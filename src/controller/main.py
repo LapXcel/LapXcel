@@ -34,8 +34,6 @@ def main():
                 controller.reset_car()
                 print("[Controller] Socket reset car")
 
-            conn.sendall(str.encode("received"))
-
         except Exception as e:
             print(f"[Controller] Error: {e}")
 
