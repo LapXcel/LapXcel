@@ -25,20 +25,21 @@ def main():
             if not data:
                 break
             cmd = json.loads(data.decode())
-            print(cmd)
 
-            if cmd["perform"]:
+            if "perform" in cmd:
                 controller.perform(cmd["perform"][0], cmd["perform"][1])
                 print(f"[Controller] Socket perform({cmd["perform"][0]}, {cmd["perform"][1]})")
-            
-            elif cmd["reset_car"]:
+
+            elif "reset_car" in cmd:
                 controller.reset_car()
                 print("[Controller] Socket reset car")
+
+            conn.sendall(str.encode("received"))
+
         except Exception as e:
             print(f"[Controller] Error: {e}")
 
     conn.close()
-    sock.close()
 
 
 if __name__ == "__main__":

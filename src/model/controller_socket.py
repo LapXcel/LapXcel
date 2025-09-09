@@ -1,6 +1,7 @@
 import socket
 import json
 import numpy as np
+import time
 
 from crossq.utils.logx import colorize
 
@@ -17,13 +18,13 @@ class ControllerSocket:
     data = None
 
 class ControllerSocket:
-    def __init__(self, host="host.docker.internal", port=9999) -> None:
+    def __init__(self, host="host.docker.internal", port=9999, retry_delay=2) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.connect((host, port))
+        self.retry_delay = retry_delay
         self.host = host
         self.port = port
-        print(colorize(f"[Controller] Initialized TCP socket targeting ({self.host}, {self.port})", "cyan"))
+        self.sock.connect((self.host, self.port))
     
     def convert_np(self, obj):
         if isinstance(obj, np.generic):
@@ -38,10 +39,12 @@ class ControllerSocket:
         try:
             cmd_clean = self.convert_np(command)
             msg = json.dumps(cmd_clean).encode()
-            self.sock.sendto(msg, (self.host, self.port))
-            print(colorize(f"[Controller] Sent {cmd_clean} to {(self.host, self.port)}", "cyan"))
+            self.sock.sendall(msg)
+            print(colorize(f"[Controller] Sent {cmd_clean}", "cyan"))
+            self.sock.recv(1024)
+
         except Exception as e:
-            print(colorize(f"[Controller] No data sent to client: {e}", "red"))
+            print(colorize(f"[Controller] Error: {e}", "red"))
             self.on_close()
     
     def on_close(self) -> None:

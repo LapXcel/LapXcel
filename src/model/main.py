@@ -13,17 +13,32 @@ def main():
     # Initialize the environment, max_episode_steps is the maximum amount of steps before the episode is truncated
     env = Env(max_speed=max_speed)
 
-    # Establish a socket connection
+    model = None
     sock = ACSocket()
     print("Waiting for socket connection...")
-    with sock.connect() as conn:
+    try:
+        with sock.connect() as conn:
+            env.unwrapped.set_sock(sock)
+            model = SAC("MlpPolicy", env, verbose=1, device="cuda")
+            model.learn(total_timesteps=100000)
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+    finally:
+        if model is not None:
+            try:
+                model.save("./sac_lapxcel")
+                print("Model saved successfully.")
+            except Exception as save_e:
+                print(f"Failed to save the model: {save_e}")
+        try:
+            env.controller.on_close()
+        except Exception as close_e:
+            print(f"Error during controller close: {close_e}")
 
-        # Set the socket in the environment
-        env.unwrapped.set_sock(sock)
-
-        model = SAC("MlpPolicy", env, verbose=1)
-        model.learn(total_timesteps=100000)
-        model.save("sac_lapxcel")
+        try:
+            conn.close()
+        except Exception as close_conn_e:
+            print(f"Error closing socket connection: {close_conn_e}")
 
 
 if __name__ == "__main__":
