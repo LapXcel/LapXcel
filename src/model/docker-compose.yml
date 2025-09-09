@@ -1,5 +1,5 @@
 services:
-  rocm-app:
+  ACRL:
     build: .
     ports:
       - 65431:65431

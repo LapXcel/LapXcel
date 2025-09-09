@@ -23,7 +23,7 @@ def main():
         env.unwrapped.set_sock(sock)
 
         model = SAC("MlpPolicy", env, verbose=1, device="cuda")
-        checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='./app/checkpoints/', name_prefix='sac_lapxcel')
+        checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='/app/checkpoints/', name_prefix='sac_lapxcel')
         model.learn(total_timesteps=1000000, callback=checkpoint_callback)
         model.save("/app/sac_lapxcel")
 

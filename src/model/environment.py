@@ -6,7 +6,7 @@ from gymnasium import spaces
 
 from ac_socket import ACSocket
 from controller_socket import ControllerSocket
-from crossq.utils.logx import colorize
+from utils.logx import colorize
 
 
 class Env(gym.Env):

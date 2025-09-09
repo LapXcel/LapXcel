@@ -1,9 +1,8 @@
 import socket
 import json
 import numpy as np
-import time
 
-from crossq.utils.logx import colorize
+from utils.logx import colorize
 
 
 class ControllerSocket:

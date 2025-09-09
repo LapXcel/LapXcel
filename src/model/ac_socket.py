@@ -1,6 +1,6 @@
 import socket
 
-from crossq.utils.logx import colorize
+from utils.logx import colorize
 
 
 class ACSocket:
