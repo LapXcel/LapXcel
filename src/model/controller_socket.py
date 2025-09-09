@@ -17,10 +17,10 @@ class ControllerSocket:
     data = None
 
 class ControllerSocket:
-    def __init__(self, host="host.docker.internal", port=9999, retry_delay=2) -> None:
+    def __init__(self, host="host.docker.internal", port=9999) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.retry_delay = retry_delay
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.host = host
         self.port = port
         self.sock.connect((self.host, self.port))

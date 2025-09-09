@@ -11,6 +11,7 @@ def main():
     port = 9999
     controller = ACController()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     sock.bind((host, port))
     sock.listen(1)
     print("[Controller] Socket listening on (" +
