@@ -39,7 +39,7 @@ class ControllerSocket:
             cmd_clean = self.convert_np(command)
             msg = json.dumps(cmd_clean).encode()
             self.sock.sendall(msg)
-            print(colorize(f"[Controller] Sent {cmd_clean}", "cyan"))
+            # print(colorize(f"[Controller] Sent {cmd_clean}", "cyan"))
 
         except Exception as e:
             print(colorize(f"[Controller] Error: {e}", "red"))

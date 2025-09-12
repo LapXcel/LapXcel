@@ -1,5 +1,6 @@
 from typing import Optional
 import numpy as np
+import time
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -16,7 +17,6 @@ class Env(gym.Env):
 
     metadata = {"render_modes": [], "render_fps": 0}
     _observations = None
-    _invalid_flag = 0.0
     _sock = None
 
     def __init__(self, render_mode: Optional[str] = None, max_speed=200.0):
@@ -44,20 +44,32 @@ class Env(gym.Env):
         self.lap_time = 0
         self.current_progress = 1
         self.lap_invalid = False
+        self.slow = 0
 
         # Observations is a Box with the following data:
         # - "speed_kmh": The speed of the car in km/h [0.0, max_speed]
+        # - "steer": The steering angle of the car [-1.000, 1.000]
         # - "world_loc_x": The world's x location of the car [-2000.0, 2000.0]
         # - "world_loc_y": The world's y location of the car [-2000.0, 2000.0]
         # - "world_loc_z": The world's z location of the car [-2000.0, 2000.0]
         # - "velocity_x": The x velocity of the car [-max_speed, max_speed]
+        # - "velocity_y": The x velocity of the car [-max_speed, max_speed]
         # - "velocity_z": The z velocity of the car [-max_speed, max_speed]
         self.observation_space = spaces.Box(
-            low=np.array([0.0, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed]),
-            high=np.array([max_speed, 2000.0, 2000.0, 2000.0, max_speed, max_speed]),
-            shape=(6,),
-            dtype=np.float32,
+            low=np.array([
+                [0.0, -1.000, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed, -max_speed],
+                [0.0, -1.000, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed, -max_speed],
+                [0.0, -1.000, -2000.0, -2000.0, -2000.0, -max_speed, -max_speed, -max_speed]
+            ]),
+            high=np.array([
+                [max_speed, 1.000, 2000.0, 2000.0, 2000.0, max_speed, max_speed, max_speed],
+                [max_speed, 1.000, 2000.0, 2000.0, 2000.0, max_speed, max_speed, max_speed],
+                [max_speed, 1.000, 2000.0, 2000.0, 2000.0, max_speed, max_speed, max_speed]
+            ]),
+            shape=(3, 8),
+            dtype=np.float16
         )
+
 
         # We have a continuous action space, where we have:
         # - A brake/throttle value, which is a number in [-1.0, 1.0]
@@ -103,23 +115,28 @@ class Env(gym.Env):
         self.lap_count = float(data_dict['lap_count'])
         self.lap_time = int(data_dict['lap_time'])
 
-        # Lap stays invalid as soon as it has been invalid once
-        self.lap_invalid = self._invalid_flag
         if data_dict['lap_invalid'] == 'True':
-            self.lap_invalid = 1.0
-        self._invalid_flag = self.lap_invalid
+            self.lap_invalid = True
 
         # Get observation space
         speed_kmh = float(data_dict['speed_kmh'])
+        steer = float(data_dict['steer'])
         world_loc_x = float(data_dict['world_loc[0]'])
         world_loc_y = float(data_dict['world_loc[1]'])
         world_loc_z = float(data_dict['world_loc[2]'])
         velocity_x = float(data_dict['velocity[0]'])
-        velocity_z = float(data_dict['velocity[1]'])
+        velocity_y = float(data_dict['velocity[1]'])
+        velocity_z = float(data_dict['velocity[2]'])
 
         # Update the observations
-        self._observations = np.array(
-            [speed_kmh, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_z], dtype=np.float32)
+        if len(self._observations) >= 3:
+            self._observations = np.concatenate((self._observations[1:], np.array(
+                [[speed_kmh, steer, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_y, velocity_z]], dtype=np.float16)))
+        else:
+            self._observations = np.array(
+                [[speed_kmh, steer, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_y, velocity_z],
+                 [speed_kmh, steer, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_y, velocity_z],
+                 [speed_kmh, steer, world_loc_x, world_loc_y, world_loc_z, velocity_x, velocity_y, velocity_z]], dtype=np.float16)
         return self._observations
 
     def _get_info(self) -> dict:
@@ -132,7 +149,10 @@ class Env(gym.Env):
         super().reset(seed=seed)
         self.controller.update({"reset_car": 0})
         # self.steps_taken = 0  # reset step counter
-        self._invalid_flag = 0.0
+        self.lap_invalid = False
+        self._observations = []
+        self.slow = 0
+        time.sleep(0.5) # Delay required for car to reset
         observation = self._update_obs()
         info = self._get_info()
         return observation, info
@@ -144,6 +164,14 @@ class Env(gym.Env):
 
         observation = self._update_obs()
 
+        # Check if speed is too slow for too long
+        if self._observations[-1][0] > 5:
+            self.slow = 0
+        elif self.slow <= 0:
+            self.slow = time.time()
+
+        self.lap_invalid = time.time() - self.slow > 3 or self.lap_invalid
+
         terminated = (self.track_progress >= self.progress_goal and self.lap_count >= 2
                     or self.lap_invalid)
 
@@ -154,13 +182,13 @@ class Env(gym.Env):
         return observation, reward, terminated, truncated, info
     
     def _get_reward(self, terminated: bool) -> float:
-        step_penalty = 0.01
-        progress_reward = 0.01
+        step_penalty = 0.001
+        progress_reward = 0.001
         finishing_reward = 1.0
 
         if terminated:
             if self.lap_invalid:
-                return -1000.0
+                return -1
             else:
                 return finishing_reward
         elif self.track_progress * 100 >= self.current_progress:
