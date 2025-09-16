@@ -100,10 +100,6 @@ def acUpdate(deltaT):
     else:
         ac.setText(label_model_info, "Training: " + str(training))
 
-    if ac.getCameraMode() is not 4:
-        # Lock the camera mode to helicopter
-        ac.setCameraMode(4)
-
 
 def acShutdown():
     """
