@@ -1,0 +1,45 @@
+services:
+  acrl:
+    build: .
+    ports:
+      - 9999:9999
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    ipc: host
+    shm_size: 8g
+    devices:
+      - /dev/dxg
+      - /dev/dri
+    volumes:
+      - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so
+      - /opt/rocm/lib/libhsa-runtime64.so.1:/opt/rocm/lib/libhsa-runtime64.so.1
+      - type: bind
+        source: ./
+        target: /app/
+    tty: true
+    stdin_open: true
+  # vae:
+  #   build: ./vae
+  #   cap_add:
+  #     - SYS_PTRACE
+  #   security_opt:
+  #     - seccomp:unconfined
+  #   ipc: host
+  #   shm_size: 8g
+  #   devices:
+  #     - /dev/dri
+  #     - /dev/dxg
+  #   group_add:
+  #     - video
+  #   volumes:
+  #     - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so
+  #     - /opt/rocm/lib/libhsa-runtime64.so.1:/opt/rocm/lib/libhsa-runtime64.so.1
+  #     - type: bind
+  #       source: ./vae/
+  #       target: /app/
+  #   tty: true
+  #   stdin_open: true
