@@ -1,6 +1,0 @@
-setup.py
-crossq_rl.egg-info/PKG-INFO
-crossq_rl.egg-info/SOURCES.txt
-crossq_rl.egg-info/dependency_links.txt
-crossq_rl.egg-info/requires.txt
-crossq_rl.egg-info/top_level.txt

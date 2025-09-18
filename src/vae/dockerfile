@@ -1,0 +1,3 @@
+FROM rocm/tensorflow:latest
+RUN pip install stable_baselines3 tqdm cloudpickle opencv-python
+CMD ["python", "/app/train.py", "--n-epochs 50", "--verbose 0". "--z-size 64", "-f /app/vae/img"]
