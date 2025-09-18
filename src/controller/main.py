@@ -29,18 +29,23 @@ def main():
     sock.connect((host, port))
     print(f"[Controller] Connected to ({host}, {port})")
 
-    while True:
-        with mss.mss() as sct:
-            mon = sct.monitors[2]
-            controller = ACController()
-            while True:
-                # Receive signals from the socket
-                raw_msg = sock.recv(1024)
-                if not raw_msg:
-                    print("[Controller] Ending training...")
-                    break
-                message_str = raw_msg.decode('utf-8')
-                message = json.loads(message_str)
+    with mss.mss() as sct:
+        mon = sct.monitors[2]
+        buffer = ""
+        while True:
+            raw_msg = sock.recv(16*1024)
+            if not raw_msg:
+                break
+            buffer += raw_msg.decode('utf-8')
+            while '\n' in buffer:
+                line, buffer = buffer.split('\n', 1)
+                if not line.strip():
+                    continue
+                try:
+                    message = json.loads(line)
+                except Exception as e:
+                    print(f"[Controller] Failed to parse JSON: {e}, line={line}")
+                    continue
 
                 print(f"[Controller] Received request: {message}")
 
@@ -49,8 +54,8 @@ def main():
                     continue
 
                 if message["msg_type"] == "request":
-                    ac_conn.update()
-                    data = ac_conn.data
+                    ac_conn.sendall("request".encode('utf-8'))
+                    data = ac_conn.recv(16*1024)
 
                     try:
                         # Convert the byte data to a string
@@ -64,22 +69,20 @@ def main():
                         continue
 
                     screenshot = sct.grab(mon)
-                    img = np.array(screenshot)
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    img = np.array(screenshot)[:, :, :3]
+                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    # _, encoded_img = cv2.imencode('.jpg', img)
                     _, encoded_img = cv2.imencode('.jpg', img)
-                    img_bytes = encoded_img.tobytes()
-                    img_b64 = base64.b64encode(img_bytes).decode('utf-8')
-
-                    cv2.imshow('Image Window', img)
+                    img_b64 = base64.b64encode(encoded_img).decode('utf-8')
 
                     data = {"msg_type": "telemetry", "image": img_b64, "lap_invalid": data_dict["lap_invalid"], "speed": data_dict["speed_kmh"], "steering_angle": data_dict["steer"]}
-                    print(f"[Controller] Sending data: {data}")
+                    print("[Controller] Sending data...")
 
-                    sock.sendall(data)
+                    sock.sendall((json.dumps(data) + "\n").encode('utf-8'))
 
                 elif message["msg_type"] == "control":
                     print("[Controller] Performing action...")
-                    controller.perform(message["throttle_brake"], message["steer"])
+                    controller.perform(float(message["throttle"]), float(message["steering"]))
 
                 elif message["msg_type"] == "reset_car":
                     print("[Controller] Resetting...")
@@ -89,7 +92,7 @@ def main():
                     print("[Controller] Error: Invalid Message Type")
                     continue
 
-        ac_conn.close()
+    ac_conn.close()
 
 
 if __name__ == "__main__":

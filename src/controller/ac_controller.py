@@ -36,6 +36,7 @@ class ACController:
         self.gamepad.left_joystick_float(
             x_value_float=steer, y_value_float=0.0)
         self.gamepad.update()
+        print(f"[Gamepad] Action performed {throttle_brake}, {steer}")
 
     def reset_car(self):
         """

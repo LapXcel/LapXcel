@@ -122,7 +122,7 @@ class ACVAEEnv(gymnasium.Env):
                     jerk_penalty += 0
         return jerk_penalty
 
-    def postprocessing_step(self, action, observation, reward, done, info):
+    def postprocessing_step(self, action, observation, reward, done, truncated, info):
         """
         Update the reward (add jerk_penalty if needed), the command history
         and stack new observation (when using frame-stacking).
@@ -152,9 +152,9 @@ class ACVAEEnv(gymnasium.Env):
             if done:
                 self.stacked_obs[...] = 0
             self.stacked_obs[..., -observation.shape[-1]:] = observation
-            return self.stacked_obs, reward, done, info
+            return self.stacked_obs, reward, done, truncated, info
 
-        return observation, reward, done, info
+        return observation, reward, done, truncated, info
 
     def step(self, action):
         """
@@ -183,15 +183,20 @@ class ACVAEEnv(gymnasium.Env):
         for _ in range(self.frame_skip):
             print("[ENV] Performing action...")
             self.viewer.take_action(action)
-            observation, reward, done, info = self.observe()
+            observation, reward, done, truncated, info = self.observe()
 
-        return self.postprocessing_step(action, observation, reward, done, info)
+            # if done:
+            #     print("[ENV] Episode done.")
+            #     observation, info = self.reset()
+            #     break
+
+        return self.postprocessing_step(action, observation, reward, done, truncated, info)
 
     def reset(self, seed = None, options = None):
         print("[ENV] Resetting environment...")
         self.viewer.reset()
         self.command_history = np.zeros((1, self.n_commands * self.n_command_history))
-        observation, reward, done, info = self.observe()
+        observation, reward, done, truncated, info = self.observe()
 
         if self.n_command_history > 0:
             observation = np.concatenate((observation, self.command_history), axis=-1)
@@ -218,12 +223,13 @@ class ACVAEEnv(gymnasium.Env):
         :return: (np.ndarray, float, bool, dict)
         """
         print("[ENV] Getting observation...")
-        observation, reward, done, info = self.viewer.observe()
+        observation, reward, done, truncated, info = self.viewer.observe()
         # Learn from Pixels
         if self.vae is None:
-            return observation, reward, done, info
+            return observation, reward, done, truncated, info
+        info
         # Encode the image
-        return self.vae.encode(observation), reward, done, info
+        return self.vae.encode(observation), reward, done, truncated, info
 
     def close(self):
         if self.unity_process is not None:

@@ -116,10 +116,10 @@ class ACHandler(IMesgHandler):
         self.last_throttle = 0.0
         self.steering_angle = 0.0
         self.current_step = 0
+        self.last_step = -1
         self.speed = 0
         self.steering = None
         self.lap_invalid = False
-
         # Define which method should be called
         # for each type of message
         self.fns = {'telemetry': self.on_telemetry}
@@ -136,7 +136,7 @@ class ACHandler(IMesgHandler):
         """
         Close socket.
         """
-        self.sock.close()
+        self.sock.connection_lost(None)
         self.sock = None
 
     def on_recv_message(self, message):
@@ -165,6 +165,8 @@ class ACHandler(IMesgHandler):
         self.image_array = np.zeros(self.camera_img_size)
         self.last_obs = None
         self.current_step = 0
+        self.last_step = -1
+        self.lap_invalid = False
         self.send_control(0, 0)
         self.send_reset_car()
         time.sleep(1.0)
@@ -189,25 +191,34 @@ class ACHandler(IMesgHandler):
         self.current_step += 1
 
         self.send_control(self.steering, throttle)
+        time.sleep(1)
 
     def observe(self):
-        while self.last_obs is self.image_array:
-            time.sleep(1.0 / 120.0)
+        msg = {'msg_type': 'request'}
+        self.queue_message(msg)
 
+        while self.last_step == self.current_step:
+            time.sleep(1.0/60.0)
+        
+        self.last_step = self.current_step
         self.last_obs = self.image_array
         observation = self.image_array
         done = self.is_game_over()
         reward = self.calc_reward(done)
         info = {}
+        truncated = False
 
         self.timer.on_frame()
 
-        return observation, reward, done, info
+        return observation, reward, done, truncated, info
 
     def is_game_over(self):
         """
         :return: (bool)
         """
+        # if self.steps_since_reset < 2:
+        #     return False
+        print(f"[Game Over] {self.lap_invalid}")
         return self.lap_invalid
 
     def calc_reward(self, done):
@@ -236,9 +247,12 @@ class ACHandler(IMesgHandler):
         :param data: (dict)
         """
         img_string = data["image"]
-        image = Image.open(BytesIO(base64.b64decode(img_string)))
-        # Resize and crop image
-        image = np.array(image)
+        print(f"[DEBUG] Image base64 length: {len(img_string)}")
+        try:
+            image = Image.open(BytesIO(base64.b64decode(img_string)))
+        except Exception as e:
+            print(f"[ERROR] Failed to open image: {e}")
+            return
         # Save original image for render
         self.original_image = np.copy(image)
         # Resize if using higher resolution images
@@ -247,12 +261,13 @@ class ACHandler(IMesgHandler):
         r = ROI
         image = image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
         # Convert RGB to BGR
-        image = image[:, :, ::-1]
+        # image = image[:, :, ::-1]
         self.image_array = image
         # Here resize is not useful for now (the image have already the right dimension)
         # self.image_array = cv2.resize(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
 
-        self.lap_invalid = data["lap_invalid"]
+        self.lap_invalid = data["lap_invalid"] == "True"
+        print(f"[DEBUG] lap_invalid={self.lap_invalid}")
         self.steering_angle = data['steering_angle']
         self.speed = data["speed"]
 
