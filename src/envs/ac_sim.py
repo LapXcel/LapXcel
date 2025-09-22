@@ -211,9 +211,10 @@ class ACHandler(IMesgHandler):
         self.last_obs = self.image_array
         observation = self.image_array
         done = self.is_game_over()
-        truncated = time.time() - self.slow >= 5 and self.slow != -1
-        reward = self.calc_reward(done, truncated)
+        truncated = False
+        reward = self.calc_reward(done)
         info = {}
+        done = done or time.time() - self.slow >= 5 and self.slow != -1
 
         self.timer.on_frame()
 
@@ -229,7 +230,7 @@ class ACHandler(IMesgHandler):
             print(f"[ACHandler] Is Game Over {self.lap_invalid}")
         return self.lap_invalid
 
-    def calc_reward(self, done, truncated):
+    def calc_reward(self, done):
         """
         Compute reward:
         - +1 life bonus for each step + throttle bonus
@@ -242,8 +243,9 @@ class ACHandler(IMesgHandler):
             # penalize the agent for getting off the road fast
             norm_throttle = (self.last_throttle - MIN_THROTTLE) / (MAX_THROTTLE - MIN_THROTTLE)
             return REWARD_CRASH - CRASH_SPEED_WEIGHT * norm_throttle
-        if truncated:
-            return -5
+        
+        if time.time() - self.slow >= 5 and self.slow != -1:
+            return -25
         # 1 per timesteps + throttle
         # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
         reward = self.track_progress - self.last_track_progress
@@ -288,7 +290,6 @@ class ACHandler(IMesgHandler):
             self.slow = -1
         elif self.speed < 5 and self.slow == -1:
             self.slow = time.time()
-
 
     def send_control(self, steer, throttle):
         """

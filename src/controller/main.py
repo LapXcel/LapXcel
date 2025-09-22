@@ -75,7 +75,8 @@ def main():
                     _, encoded_img = cv2.imencode('.jpg', img)
                     img_b64 = base64.b64encode(encoded_img).decode('utf-8')
 
-                    data = {"msg_type": "telemetry", "image": img_b64, "lap_invalid": data_dict["lap_invalid"], "speed": data_dict["speed_kmh"], "steering_angle": data_dict["steer"], "track_progress": data_dict["track_progress"]}
+                    data = {"msg_type": "telemetry", "image": img_b64, "lap_invalid": data_dict["lap_invalid"], "speed": data_dict["speed_kmh"], 
+                            "steering_angle": data_dict["steer"], "track_progress": data_dict["track_progress"]}
                     print("[Controller] Sending data...")
 
                     sock.sendall((json.dumps(data) + "\n").encode('utf-8'))
