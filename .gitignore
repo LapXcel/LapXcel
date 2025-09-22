@@ -4,5 +4,5 @@ get_contents.py
 master_file.txt
 .DS_Store
 *.pkl
-./src/vae/imgs
-./src/logs
+/src/vae/imgs
+/src/logs
