@@ -19,7 +19,7 @@ JERK_REWARD_WEIGHT = 0.0
 
 # very smooth control: 10% -> 0.2 diff in steering allowed (requires more training)
 # smooth control: 15% -> 0.3 diff in steering allowed
-MAX_STEERING_DIFF = 0.10
+MAX_STEERING_DIFF = 0.15
 # Negative reward for getting off the road
 REWARD_CRASH = -10
 # Penalize the agent even more when being fast
@@ -43,8 +43,10 @@ TEST_FRAME_SKIP = 1
 
 # Params that are logged
 SIM_PARAMS = ['MIN_THROTTLE', 'MAX_THROTTLE', 'FRAME_SKIP',
-              'MAX_CTE_ERROR', 'N_COMMAND_HISTORY', 'MAX_STEERING_DIFF']
+              'N_COMMAND_HISTORY', 'MAX_STEERING_DIFF']
 
 # DEBUG PARAMS
 # Show input and reconstruction in the teleop panel
 SHOW_IMAGES_TELEOP = True
+
+SLOW_TIME = 3

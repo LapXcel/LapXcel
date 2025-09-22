@@ -184,15 +184,16 @@ class ACVAEEnv(gymnasium.Env):
 
         # Clip steering angle rate to enforce continuity
         # print(f"Action taken before {action[0]}")
-        action[0] = 0.1*action[0] ** 3
+        # action[0] = 0.15*action[0]
         # print(f"Action taken after expo {action[0]}")
         if self.n_command_history > 0:
             prev_steering = self.command_history[0, -2]
             # print(f"Previous value {prev_steering}")
-            # max_diff = (MAX_STEERING_DIFF - 1e-5) * (MAX_STEERING - MIN_STEERING)
-            # diff = np.clip(action[0] - prev_steering, -max_diff, max_diff)
-            action[0] += prev_steering
-            action[0] = min(max(action[0], MIN_STEERING), MAX_STEERING)
+            max_diff = (MAX_STEERING_DIFF - 1e-5) * (MAX_STEERING - MIN_STEERING)
+            diff = np.clip(action[0] - prev_steering, -max_diff, max_diff)
+            # action[0] += prev_steering
+            # action[0] = min(max(action[0], MIN_STEERING), MAX_STEERING)
+            action[0] = diff + prev_steering
         # print(f"Action taken after {action[0]}")
         # Repeat action if using frame_skip
         for _ in range(self.frame_skip):

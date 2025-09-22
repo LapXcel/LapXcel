@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 from config import INPUT_DIM, ROI, THROTTLE_REWARD_WEIGHT, MAX_THROTTLE, MIN_THROTTLE, \
-    REWARD_CRASH, CRASH_SPEED_WEIGHT
+    REWARD_CRASH, CRASH_SPEED_WEIGHT, SLOW_TIME
 from envs.utils.fps import FPSTimer
 from envs.utils.tcp_server import IMesgHandler, SimServer
 
@@ -214,7 +214,7 @@ class ACHandler(IMesgHandler):
         truncated = False
         reward = self.calc_reward(done)
         info = {}
-        done = done or time.time() - self.slow >= 5 and self.slow != -1
+        done = done or time.time() - self.slow >= SLOW_TIME and self.slow != -1
 
         self.timer.on_frame()
 
@@ -244,12 +244,12 @@ class ACHandler(IMesgHandler):
             norm_throttle = (self.last_throttle - MIN_THROTTLE) / (MAX_THROTTLE - MIN_THROTTLE)
             return REWARD_CRASH - CRASH_SPEED_WEIGHT * norm_throttle
         
-        if time.time() - self.slow >= 5 and self.slow != -1:
-            return -25
+        if time.time() - self.slow >= SLOW_TIME and self.slow != -1:
+            return -10
         # 1 per timesteps + throttle
-        # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
-        reward = self.track_progress - self.last_track_progress
-        return reward
+        throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
+        # reward = self.track_progress - self.last_track_progress
+        return 1 + throttle_reward
 
     # ------ Socket interface ----------- #
 
@@ -286,9 +286,9 @@ class ACHandler(IMesgHandler):
         self.track_progress = float(data["track_progress"]) * 100
         self.steering_angle = float(data['steering_angle'])
         self.speed = float(data["speed"])
-        if self.speed >= 5:
+        if self.speed >= SLOW_TIME:
             self.slow = -1
-        elif self.speed < 5 and self.slow == -1:
+        elif self.speed < SLOW_TIME and self.slow == -1:
             self.slow = time.time()
 
     def send_control(self, steer, throttle):
