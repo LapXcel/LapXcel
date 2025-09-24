@@ -4,75 +4,54 @@ from flax import linen as nn
 import pickle
 from flax.training import train_state
 import optax
+import cv2
+
+class Encoder(nn.Module):
+    latent_dim: int
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Conv(features=32, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=64, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=128, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=256, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
+        x = nn.relu(x)
+        x = x.reshape((x.shape[0], -1))
+
+        x = nn.Dense(512)(x)
+        x = nn.relu(x)
+        mean = nn.Dense(self.latent_dim)(x)
+        logvar = nn.Dense(self.latent_dim)(x)
+        return mean, logvar
+
+
+class Decoder(nn.Module):
+
+    @nn.compact
+    def __call__(self, z):
+        z = nn.Dense(20 * 40 * 256)(z)
+        z = nn.relu(z)
+        z = z.reshape((-1, 20, 40, 256))
+
+        z = nn.ConvTranspose(features=128, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(z)
+        z = nn.relu(z)
+        z = nn.ConvTranspose(features=64, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(z)
+        z = nn.relu(z)
+        z = nn.ConvTranspose(features=32, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(z)
+        z = nn.relu(z)
+        z = nn.ConvTranspose(features=3, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(z)
+        z = nn.sigmoid(z)
+
+        reconstruction = z.reshape((z.shape[0], -1))
+        return reconstruction
 
 class VAE():
-    class Encoder(nn.Module):
-        latent_dim: int
-
-        @nn.compact
-        def __call__(self, x):
-            x = nn.Conv(features=32, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.Conv(features=64, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.Conv(features=128, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.Conv(features=256, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = x.reshape((x.shape[0], -1))
-
-            x = nn.Dense(512)(x)
-            x = nn.relu(x)
-            mean = nn.Dense(self.latent_dim)(x)
-            logvar = nn.Dense(self.latent_dim)(x)
-            return mean, logvar
-
-
-    class Decoder(nn.Module):
-        latent_dim: int
-
-        @nn.compact
-        def __call__(self, z):
-            x = nn.Dense(20 * 40 * 256)(z)
-            x = nn.relu(x)
-            x = x.reshape((-1, 20, 40, 256))
-
-            x = nn.ConvTranspose(features=128, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.ConvTranspose(features=64, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.ConvTranspose(features=32, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-            x = nn.relu(x)
-            x = nn.ConvTranspose(features=3, kernel_size=(4, 4), strides=(2, 2), padding='SAME')(x)
-
-            reconstruction = x.reshape((x.shape[0], -1))
-            return reconstruction
-
-    def __init__(self, z_size=64, batch_size=100, learning_rate=0.0001,
-                 kl_tolerance=0.5, beta=1.0):
-        self.z_size = z_size
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.kl_tolerance = kl_tolerance
-        self.beta = beta
-        self.encoder = self.Encoder(z_size)
-        self.decoder = self.Decoder(z_size)
-
-        # Initialize parameters here
-        self.rng_key = jax.random.PRNGKey(0)
-        dummy_input = jnp.ones((1, 320, 640, 3))  # batch size 1, your input size
-
-        encoder_params = self.encoder.init(self.rng_key, dummy_input)['params']
-        decoder_params = self.decoder.init(self.rng_key, jnp.ones((1, z_size)))['params']
-
-        self.params = {'encoder': encoder_params, 'decoder': decoder_params}
-
-        tx = optax.adam(learning_rate=1e-3)
-        self.state = train_state.TrainState.create(apply_fn=None, params=self.params, tx=tx)
-
     def reparameterize(self, key, mean, logvar):
         std = jnp.exp(0.5 * logvar)
-        eps = jax.random.normal(key, shape=std.shape)
+        eps = jax.random.normal(key, logvar.shape)
         return mean + eps * std
 
 
@@ -127,6 +106,47 @@ class VAE():
         logvar = logvar[0]
 
         # Sample from latent distribution with reparameterization trick
-        # z = self.reparameterize(self.rng_key, mean, logvar)
+        z = self.reparameterize(self.rng_key, mean, logvar)
 
-        return [mean]
+        return [mean, z]
+    
+
+    def decode(self, z):
+        """
+        Decode a latent vector z to an image reconstruction.
+
+        Args:
+            z: latent vector of shape (latent_dim,) or (batch_size, latent_dim)
+
+        Returns:
+            reconstruction: decoded image tensor, shape (batch_size, 320, 640, 3)
+        """
+        if z.ndim == 1:
+            z = jnp.expand_dims(z, axis=0)
+
+        flat_reconstruction = self.decoder.apply({'params': self.state.params['decoder']}, z)
+
+        # Reshape output to image shape (batch_size, 320, 640, 3)
+        reconstruction = flat_reconstruction.reshape((1, 320, 640, 3))
+        return reconstruction
+    
+    def display_image(self, image):
+        """
+        Display a single image using matplotlib.
+
+        Args:
+            image: decoded image numpy array of shape (320, 640, 3)
+        """
+        # Convert from JAX DeviceArray to numpy and clip values if needed
+        # Convert from JAX DeviceArray to numpy and clip values to [0, 1]
+        # image_np = jnp.clip(image, 0, 1)
+        # image_np = jax.device_get(image_np)  # move to host memory
+        # image_np = (image_np * 255).astype('uint8')  # scale to 0-255 for OpenCV
+
+        # # Convert RGB to BGR (OpenCV uses BGR)
+        # image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+
+        # Display image in a window
+        cv2.imshow('Decoded Image', image)
+        cv2.waitKey(0)  # Wait indefinitely until a key is pressed
+        cv2.destroyAllWindows()

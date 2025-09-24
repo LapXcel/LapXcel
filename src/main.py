@@ -18,9 +18,9 @@ def main():
                 env=env,
                 device="cuda",
                 tensorboard_log="/app/logs/tensorboard/",
-                buffer_size=200_000,   # reasonable for 13GB GPU
-                batch_size=256,        # can handle larger batches on 13GB
-                learning_starts=10_000, # give buffer some data before learning
+                buffer_size=30_000,   # reasonable for 13GB GPU
+                batch_size=64,        # can handle larger batches on 13GB
+                learning_starts=1_000, # give buffer some data before learning
                 train_freq=1,          # update every step
                 gradient_steps=1,
                 verbose=1)

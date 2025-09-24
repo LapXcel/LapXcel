@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 from config import INPUT_DIM, ROI, THROTTLE_REWARD_WEIGHT, MAX_THROTTLE, MIN_THROTTLE, \
-    REWARD_CRASH, CRASH_SPEED_WEIGHT, SLOW_TIME
+    REWARD_CRASH, CRASH_SPEED_WEIGHT, SLOW_TIME, STEP_SIZE
 from envs.utils.fps import FPSTimer
 from envs.utils.tcp_server import IMesgHandler, SimServer
 
@@ -126,6 +126,7 @@ class ACHandler(IMesgHandler):
         self.slow = -1
         self.track_progress = 0
         self.last_track_progress = 0
+        self.next_checkpoint = STEP_SIZE
         # Define which method should be called
         # for each type of message
         self.fns = {'telemetry': self.on_telemetry}
@@ -173,6 +174,8 @@ class ACHandler(IMesgHandler):
         self.last_obs = None
         self.current_step = 0
         self.last_step = -1
+        self.track_progress = 0
+        self.next_checkpoint = STEP_SIZE
         self.lap_invalid = False
         self.send_control(0, 0)
         self.send_reset_car()
@@ -244,12 +247,14 @@ class ACHandler(IMesgHandler):
             norm_throttle = (self.last_throttle - MIN_THROTTLE) / (MAX_THROTTLE - MIN_THROTTLE)
             return REWARD_CRASH - CRASH_SPEED_WEIGHT * norm_throttle
         
-        if time.time() - self.slow >= SLOW_TIME and self.slow != -1:
-            return -10
+        # if time.time() - self.slow >= SLOW_TIME and self.slow != -1:
+        #     return -10
         # 1 per timesteps + throttle
-        throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
-        # reward = self.track_progress - self.last_track_progress
-        return 1 + throttle_reward
+        # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
+        if self.track_progress >= self.next_checkpoint:
+            self.next_checkpoint += STEP_SIZE
+            return 1
+        return -1/(self.speed + 1)
 
     # ------ Socket interface ----------- #
 

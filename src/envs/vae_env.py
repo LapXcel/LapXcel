@@ -248,7 +248,7 @@ class ACVAEEnv(gymnasium.Env):
         info
         # Encode the image
         observation = observation.astype(np.float32) / 255.0
-        return self.vae.encode(observation), reward, done, truncated, info
+        return self.vae.encode(observation)[0], reward, done, truncated, info
 
     def close(self):
         if self.unity_process is not None:
