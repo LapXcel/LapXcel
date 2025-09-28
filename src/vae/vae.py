@@ -1,10 +1,9 @@
+import numpy as np
 import jax
 import jax.numpy as jnp
+from jax import random
 from flax import linen as nn
-import pickle
-from flax.training import train_state
-import optax
-import cv2
+from flax import optim
 
 class Encoder(nn.Module):
     latent_dim: int
@@ -49,104 +48,72 @@ class Decoder(nn.Module):
         return reconstruction
 
 class VAE():
-    def reparameterize(self, key, mean, logvar):
-        std = jnp.exp(0.5 * logvar)
-        eps = jax.random.normal(key, logvar.shape)
-        return mean + eps * std
+    latents: int = 64
 
-
-    def compute_loss(self, params, batch, key):
-        mean, logvar = self.encoder.apply({'params': params['encoder']}, batch)
-        z = self.reparameterize(key, mean, logvar)
-        reconstruction = self.decoder.apply({'params': params['decoder']}, z)
-
-        recon_loss = jnp.mean(jnp.square(batch.reshape(batch.shape[0], -1) - reconstruction))
-        kl_loss = -0.5 * jnp.mean(1 + logvar - mean**2 - jnp.exp(logvar))
-
-        return recon_loss + kl_loss
-
-
-    def update_model(self, batch, key):
-        def loss_fn(params):
-            return self.compute_loss(params, batch, key)
-
-        grads = jax.grad(loss_fn)(self.state.params)
-        return self.state.apply_gradients(grads=grads)
-
-
-    def save_model(self, filename):
-        with open(filename, 'wb') as f:
-            pickle.dump(self.state.params, f)
-
-
-    def load_model(self, filename):
-        with open(filename, 'rb') as f:
-            params = pickle.load(f)
-        return self.state.replace(params=params)
-
-
-    def encode(self, image_np):
-        """
-        Encode a single preprocessed image to the latent space.
-
-        Args:
-            image_np: numpy array of shape (160, 640, 3), preprocessed (BGR, resized, normalized).
-            rng_key: JAX PRNGKey for sampling latent vector.
-
-        Returns:
-            latent_mean: latent mean vector, shape (latent_dim,)
-            latent_sample: latent vector sampled using reparameterization trick, shape (latent_dim,)
-        """
-        # Add batch dimension
-        batch = jnp.expand_dims(image_np, axis=0)  # (1, 320, 640, 3)
-
-        # Get mean and logvar from encoder
-        mean, logvar = self.encoder.apply({'params': self.state.params['encoder']}, batch)
-        mean = mean[0]    # remove batch dimension
-        logvar = logvar[0]
-
-        # Sample from latent distribution with reparameterization trick
-        z = self.reparameterize(self.rng_key, mean, logvar)
-
-        return [mean, z]
+    def setup(self):
+        self.encoder = Encoder(self.latents)
+        self.decoder = Decoder()
     
+    def __call__(self, x, z_rng):
+        mean, logvar = self.encoder(x)
+        z = reparameterize(z_rng, mean, logvar)
+        recon_x = self.decoder(z)
+        return recon_x, mean, logvar
 
-    def decode(self, z):
-        """
-        Decode a latent vector z to an image reconstruction.
-
-        Args:
-            z: latent vector of shape (latent_dim,) or (batch_size, latent_dim)
-
-        Returns:
-            reconstruction: decoded image tensor, shape (batch_size, 320, 640, 3)
-        """
-        if z.ndim == 1:
-            z = jnp.expand_dims(z, axis=0)
-
-        flat_reconstruction = self.decoder.apply({'params': self.state.params['decoder']}, z)
-
-        # Reshape output to image shape (batch_size, 320, 640, 3)
-        reconstruction = flat_reconstruction.reshape((1, 320, 640, 3))
-        return reconstruction
     
-    def display_image(self, image):
-        """
-        Display a single image using matplotlib.
+def reparameterize(rng, mean, logvar):
+    std = jnp.exp(0.5 * logvar)
+    eps = random.normal(rng, logvar.shape)
+    return mean + eps * std
 
-        Args:
-            image: decoded image numpy array of shape (320, 640, 3)
-        """
-        # Convert from JAX DeviceArray to numpy and clip values if needed
-        # Convert from JAX DeviceArray to numpy and clip values to [0, 1]
-        # image_np = jnp.clip(image, 0, 1)
-        # image_np = jax.device_get(image_np)  # move to host memory
-        # image_np = (image_np * 255).astype('uint8')  # scale to 0-255 for OpenCV
 
-        # # Convert RGB to BGR (OpenCV uses BGR)
-        # image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+def model():
+    return VAE(latents=LATENTS)
 
-        # Display image in a window
-        cv2.imshow('Decoded Image', image)
-        cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-        cv2.destroyAllWindows()
+
+@jax.vmap
+def kl_divergence(mean, logvar):
+    return -0.5 * jnp.sum(1 + logvar - jnp.square(mean) - jnp.exp(logvar))
+
+
+@jax.vmap
+def binary_cross_entropy_with_logits(logits, labels):
+    logits = nn.log_sigmoid(logits)
+    return -jnp.sum(labels * logits + (1. - labels) * jnp.log(-jnp.expm1(logits)))
+
+
+@jax.jit
+def train_step(optimizer, batch, z_rng):
+    def loss_fn(params):
+        recon_x, mean, logvar = model().apply({'params': params}, batch, z_rng)
+
+        bce_loss = binary_cross_entropy_with_logits(recon_x, batch).mean()
+        kld_loss = kl_divergence(mean, logvar).mean()
+        loss = bce_loss + kld_loss
+        return loss, recon_x
+
+    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+    _, grad = grad_fn(optimizer.target)
+    optimizer = optimizer.apply_gradient(grad)
+    return optimizer
+
+
+rng = random.PRNGKey(0)
+rng, key = random.split(rng)
+
+init_data = jnp.ones((BATCH_SIZE, 784), jnp.float32)
+params = model().init(key, init_data, rng)['params']
+
+optimizer = optim.Adam(learning_rate=LEARNING_RATE).create(params)
+optimizer = jax.device_put(optimizer)
+
+rng, z_key, eval_rng = random.split(rng, 3)
+z = random.normal(z_key, (64, LATENTS))
+
+steps_per_epoch = 50000 // BATCH_SIZE
+
+for epoch in range(NUM_EPOCHS):
+    for _ in range(steps_per_epoch):
+        batch = next(train_ds)
+        rng, key = random.split(rng)
+        optimizer = train_step(optimizer, batch, key)

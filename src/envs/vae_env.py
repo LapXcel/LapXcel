@@ -8,8 +8,7 @@ from gymnasium import spaces
 
 from config import INPUT_DIM, MIN_STEERING, MAX_STEERING, JERK_REWARD_WEIGHT, MAX_STEERING_DIFF
 from envs.ac_sim import ACController
-import math
-import time
+from gymnasium.spaces.utils import flatten_space, flatten
 
 class ACVAEEnv(gymnasium.Env):
     """
@@ -73,8 +72,14 @@ class ACVAEEnv(gymnasium.Env):
             if n_command_history > 0:
                 warnings.warn("n_command_history not supported for images"
                               "(it will not be concatenated with the input)")
-            self.observation_space = spaces.Box(low=0, high=255,
-                                                shape=INPUT_DIM, dtype=np.uint8)
+            self.observation_space = spaces.Tuple((
+                spaces.Box(low=0, high=255, shape=(64, 64), dtype=np.uint8),               # image_array
+                spaces.Box(low=-900, high=900, shape=(1,), dtype=np.float32),              # steering_angle
+                spaces.Box(low=-100, high=400, shape=(1,), dtype=np.float32),              # speed
+                spaces.Box(low=-100, high=+100, shape=(3,), dtype=np.float32),           # velocity
+                spaces.Box(low=-100, high=+100, shape=(3,), dtype=np.float32),           # acceleration
+            ))
+            self.observation_space = flatten_space(self.observation_space)
         else:
             # z latent vector from the VAE (encoded input image)
             self.observation_space = spaces.Box(low=np.finfo(np.float32).min,
@@ -89,6 +94,29 @@ class ACVAEEnv(gymnasium.Env):
             high = np.repeat(obs_space.high, self.n_stack, axis=-1)
             self.stacked_obs = np.zeros(low.shape, low.dtype)
             self.observation_space = spaces.Box(low=low, high=high, dtype=obs_space.dtype)
+            # else:
+            #     obs_space = self.observation_space  # This is spaces.Tuple with Boxes inside
+
+            #     # Create lists to hold stacked low/high arrays for each Box in the Tuple
+            #     low_list = []
+            #     high_list = []
+
+            #     for space in obs_space.spaces:
+            #         # Repeat low and high along the last axis for stacking
+            #         stacked_low = np.repeat(space.low, n_stack, axis=-1)
+            #         stacked_high = np.repeat(space.high, n_stack, axis=-1)
+            #         low_list.append(stacked_low)
+            #         high_list.append(stacked_high)
+
+            #     # Create new Tuple observation space with stacked Boxes
+            #     stacked_spaces = tuple(
+            #         spaces.Box(low=l, high=h, dtype=space.dtype) 
+            #         for l, h, space in zip(low_list, high_list, obs_space.spaces)
+            #     )
+            #     self.observation_space = spaces.Tuple(stacked_spaces)
+
+            #     # Initialize stacked_obs as a list of arrays for each component
+            #     self.stacked_obs = [np.zeros_like(l, dtype=space.dtype) for l, space in zip(low_list, obs_space.spaces)]
 
         # Frame Skipping
         self.frame_skip = frame_skip
@@ -150,6 +178,8 @@ class ACVAEEnv(gymnasium.Env):
         reward -= jerk_penalty
 
         if self.n_stack > 1:
+            observation = np.concatenate([elem.flatten() for elem in observation])
+            observation = flatten(self.observation_space, observation)
             self.stacked_obs = np.roll(self.stacked_obs, shift=-observation.shape[-1], axis=-1)
             if done:
                 self.stacked_obs[...] = 0
@@ -186,14 +216,14 @@ class ACVAEEnv(gymnasium.Env):
         # print(f"Action taken before {action[0]}")
         # action[0] = 0.15*action[0]
         # print(f"Action taken after expo {action[0]}")
-        if self.n_command_history > 0:
-            prev_steering = self.command_history[0, -2]
-            # print(f"Previous value {prev_steering}")
-            max_diff = (MAX_STEERING_DIFF - 1e-5) * (MAX_STEERING - MIN_STEERING)
-            diff = np.clip(action[0] - prev_steering, -max_diff, max_diff)
-            # action[0] += prev_steering
-            # action[0] = min(max(action[0], MIN_STEERING), MAX_STEERING)
-            action[0] = diff + prev_steering
+        # if self.n_command_history > 0:
+        #     prev_steering = self.command_history[0, -2]
+        #     # print(f"Previous value {prev_steering}")
+        #     max_diff = (MAX_STEERING_DIFF - 1e-5) * (MAX_STEERING - MIN_STEERING)
+        #     diff = np.clip(action[0] - prev_steering, -max_diff, max_diff)
+        #     # action[0] += prev_steering
+        #     # action[0] = min(max(action[0], MIN_STEERING), MAX_STEERING)
+        #     action[0] = diff + prev_steering
         # print(f"Action taken after {action[0]}")
         # Repeat action if using frame_skip
         for _ in range(self.frame_skip):
@@ -215,12 +245,20 @@ class ACVAEEnv(gymnasium.Env):
         self.command_history = np.zeros((1, self.n_commands * self.n_command_history))
         observation, reward, done, truncated, info = self.observe()
 
+        if not self.vae:
+            observation = np.concatenate([elem.flatten() for elem in observation])
+            print(observation)
+            flatten(self.observation_space, observation)
+
         if self.n_command_history > 0:
             observation = np.concatenate((observation, self.command_history), axis=-1)
 
         if self.n_stack > 1:
-            self.stacked_obs[...] = 0
-            self.stacked_obs[..., -observation.shape[-1]:] = observation
+            if self.vae:
+                self.stacked_obs[...] = 0
+                self.stacked_obs[..., -observation.shape[-1]:] = observation
+            else:
+                self.stacked_obs = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
             return self.stacked_obs, info
 
         return observation, info
@@ -245,14 +283,12 @@ class ACVAEEnv(gymnasium.Env):
         # Learn from Pixels
         if self.vae is None:
             return observation, reward, done, truncated, info
-        info
+
         # Encode the image
         observation = observation.astype(np.float32) / 255.0
         return self.vae.encode(observation)[0], reward, done, truncated, info
 
     def close(self):
-        if self.unity_process is not None:
-            self.unity_process.quit()
         self.viewer.quit()
 
     def set_vae(self, vae):

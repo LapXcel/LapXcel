@@ -69,14 +69,16 @@ def main():
                         continue
 
                     screenshot = sct.grab(mon)
-                    img = np.array(screenshot)[:, :, :3]
-                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    # _, encoded_img = cv2.imencode('.jpg', img)
+                    img = np.array(screenshot)
+                    img = cv2.resize(img, (64, 64))
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                     _, encoded_img = cv2.imencode('.jpg', img)
                     img_b64 = base64.b64encode(encoded_img).decode('utf-8')
 
                     data = {"msg_type": "telemetry", "image": img_b64, "lap_invalid": data_dict["lap_invalid"], "speed": data_dict["speed_kmh"], 
-                            "steering_angle": data_dict["steer"], "track_progress": data_dict["track_progress"]}
+                            "steering_angle": data_dict["steer"], "track_progress": data_dict["track_progress"], 
+                            "velocity": (data_dict["velocity[0]"], data_dict["velocity[1]"], data_dict["velocity[2]"]), 
+                            "lap_time": data_dict["lap_time"], "acceleration": (data_dict["acceleration[0]"], data_dict["acceleration[1]"], data_dict["acceleration[2]"])}
                     print("[Controller] Sending data...")
 
                     sock.sendall((json.dumps(data) + "\n").encode('utf-8'))

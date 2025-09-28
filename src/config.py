@@ -8,10 +8,10 @@ MARGIN_TOP = CAMERA_HEIGHT // 3
 ROI = [0, MARGIN_TOP, CAMERA_WIDTH, CAMERA_HEIGHT - MARGIN_TOP]
 
 # Input dimension for VAE
-IMAGE_WIDTH = ROI[2]
-IMAGE_HEIGHT = ROI[3]
+IMAGE_WIDTH = 64
+IMAGE_HEIGHT = 64
 N_CHANNELS = 3
-INPUT_DIM = (IMAGE_HEIGHT, IMAGE_WIDTH, N_CHANNELS)
+INPUT_DIM = (IMAGE_HEIGHT, IMAGE_WIDTH, 2)
 
 # Reward parameters
 THROTTLE_REWARD_WEIGHT = 0.1
@@ -30,11 +30,11 @@ MAX_STEERING = 1
 MIN_STEERING = - MAX_STEERING
 
 # Simulation config
-MIN_THROTTLE = -0.1
+MIN_THROTTLE = -1
 # max_throttle: 0.6 for level 0 and 0.5 for level 1
-MAX_THROTTLE = 0.99
+MAX_THROTTLE = 1
 # Number of past commands to concatenate with the input
-N_COMMAND_HISTORY = 20
+N_COMMAND_HISTORY = 4
 
 # Action repeat
 FRAME_SKIP = 1

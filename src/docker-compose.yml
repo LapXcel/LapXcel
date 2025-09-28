@@ -18,7 +18,7 @@ services:
       - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so
       - /opt/rocm/lib/libhsa-runtime64.so.1:/opt/rocm/lib/libhsa-runtime64.so.1
       - type: bind
-        source: ./vae/
+        source: ./
         target: /app/
     tty: true
     stdin_open: true

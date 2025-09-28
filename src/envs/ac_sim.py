@@ -7,6 +7,7 @@ import time
 from io import BytesIO
 from threading import Thread
 import time
+import ast
 
 import numpy as np
 from PIL import Image
@@ -95,8 +96,8 @@ class ACController:
     def is_game_over(self):
         return self.handler.is_game_over()
 
-    def calc_reward(self, done):
-        return self.handler.calc_reward(done)
+    def calc_reward(self):
+        return self.handler.calc_reward()
 
 
 class ACHandler(IMesgHandler):
@@ -117,10 +118,13 @@ class ACHandler(IMesgHandler):
         self.original_image = None
         self.last_obs = None
         self.last_throttle = 0.0
-        self.steering_angle = 0.0
+        self.steering_angle = np.array([0.0], dtype=np.float32)    
         self.current_step = 0
         self.last_step = -1
-        self.speed = 0
+        self.speed = np.array([0.0], dtype=np.float32)   
+        self.acceleration = np.array([0, 0, 0], dtype=np.float32)
+        self.lap_time = 0
+        self.velocity = np.array([0, 0, 0], dtype=np.float32)
         self.steering = None
         self.lap_invalid = False
         self.slow = -1
@@ -202,22 +206,21 @@ class ACHandler(IMesgHandler):
         self.current_step += 1
 
         self.send_control(self.steering, throttle)
+        time.sleep(0.1)
 
     def observe(self):
         msg = {'msg_type': 'request'}
         self.queue_message(msg)
 
-        while self.last_obs is self.image_array:
-            time.sleep(1.0/60.0)
+        # while self.last_obs is self.image_array:
+        #     time.sleep(1.0/60.0)
         
         self.last_step = self.current_step
         self.last_obs = self.image_array
-        observation = self.image_array
-        done = self.is_game_over()
+        observation = (self.image_array, self.steering_angle, self.speed, self.velocity, self.acceleration)
         truncated = False
-        reward = self.calc_reward(done)
-        info = {}
-        done = done or time.time() - self.slow >= SLOW_TIME and self.slow != -1
+        reward, done = self.calc_reward()
+        info = {"lap_time": self.lap_time}
 
         self.timer.on_frame()
 
@@ -233,7 +236,7 @@ class ACHandler(IMesgHandler):
             print(f"[ACHandler] Is Game Over {self.lap_invalid}")
         return self.lap_invalid
 
-    def calc_reward(self, done):
+    def calc_reward(self):
         """
         Compute reward:
         - +1 life bonus for each step + throttle bonus
@@ -242,19 +245,17 @@ class ACHandler(IMesgHandler):
         :param done: (bool)
         :return: (float)
         """
-        if done:
-            # penalize the agent for getting off the road fast
-            norm_throttle = (self.last_throttle - MIN_THROTTLE) / (MAX_THROTTLE - MIN_THROTTLE)
-            return REWARD_CRASH - CRASH_SPEED_WEIGHT * norm_throttle
-        
+        reward = 0
+        done = self.lap_invalid or time.time() - self.slow >= SLOW_TIME and self.slow != -1
         # if time.time() - self.slow >= SLOW_TIME and self.slow != -1:
         #     return -10
         # 1 per timesteps + throttle
         # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
         if self.track_progress >= self.next_checkpoint:
+            reward = ((self.track_progress - self.next_checkpoint) // STEP_SIZE) / 100
             self.next_checkpoint += STEP_SIZE
-            return 1
-        return -1/(self.speed + 1)
+
+        return reward, done
 
     # ------ Socket interface ----------- #
 
@@ -289,8 +290,11 @@ class ACHandler(IMesgHandler):
         self.lap_invalid = data["lap_invalid"] == "True"
         self.last_track_progress = self.track_progress
         self.track_progress = float(data["track_progress"]) * 100
-        self.steering_angle = float(data['steering_angle'])
-        self.speed = float(data["speed"])
+        self.steering_angle = np.array([float(data['steering_angle'])], dtype=np.float32)
+        self.speed = np.array([float(data["speed"])], dtype=np.float32)
+        self.acceleration = np.array([float(i) for i in data["acceleration"]], dtype=np.float32)
+        self.velocity = np.array([float(i) for i in data["velocity"]], dtype=np.float32)
+        self.lap_time = float(data["lap_time"])
         if self.speed >= SLOW_TIME:
             self.slow = -1
         elif self.speed < SLOW_TIME and self.slow == -1:

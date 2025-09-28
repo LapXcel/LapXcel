@@ -218,11 +218,13 @@ def sock_listener():
         lap_count = li.get_lap_count()
         velocity = ci.get_velocity()
         tires_off_track = ci.get_tyres_off_track()
+        acceleration = ci.get_acceleration()
 
         # Turn the data into a string
         data = "track_progress:" + str(track_progress) + "," + "speed_kmh:" + str(speed_kmh) + "," + "world_loc[0]:" + str(world_loc[0]) + "," + "world_loc[1]:" + str(world_loc[1]) + "," + "world_loc[2]:" + str(world_loc[2]) + "," + "throttle:" + str(
             throttle) + "," + "brake:" + str(brake) + "," + "steer:" + str(steer) + "," + "lap_time:" + str(lap_time) + "," + "lap_invalid:" + str(lap_invalid) + "," + "lap_count:" + str(lap_count) + "," + "velocity[0]:" + str(
-            velocity[0]) + "," + "velocity[1]:" + str(velocity[1]) + "," + "velocity[2]:" + str(velocity[2]) + "," + "tires_off_track:" + str(tires_off_track)
+            velocity[0]) + "," + "velocity[1]:" + str(velocity[1]) + "," + "velocity[2]:" + str(velocity[2]) + "," + "tires_off_track:" + str(tires_off_track) + "," + "acceleration[0]:" +  str(
+                acceleration[0]) + "," + "acceleration[1]:" + str(acceleration[1]) + "," + "acceleration[2]:" + str(acceleration[2])
 
         # Send the data in bytes
         sock.sendall(str.encode(data))

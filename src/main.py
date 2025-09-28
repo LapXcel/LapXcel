@@ -1,7 +1,7 @@
 from sbx import TQC
 from stable_baselines3.common.callbacks import CheckpointCallback
 from envs.vae_env import ACVAEEnv
-from vae.vae import VAE
+# from vae.vae import VAE
 
 from config import FRAME_SKIP, MIN_THROTTLE, MAX_THROTTLE, Z_SIZE
 
@@ -10,14 +10,14 @@ def main():
     The main function of the standalone application.
     It will initialize the environment and the agent, and then run the training loop.
     """
-    vae = VAE(z_size=Z_SIZE)
-    vae.load_model("/app/vae/vae_trained_params.pkl")
-    env = ACVAEEnv(frame_skip=FRAME_SKIP, vae=vae, min_throttle=MIN_THROTTLE, max_throttle=MAX_THROTTLE, verbose=False)
+    # vae = VAE(z_size=Z_SIZE)
+    # vae.load_model("/app/vae/vae_trained_params.pkl")
+    env = ACVAEEnv(frame_skip=FRAME_SKIP, vae=None, min_throttle=MIN_THROTTLE, max_throttle=MAX_THROTTLE, verbose=False, n_stack=4)
 
     model = TQC(policy="MlpPolicy",
                 env=env,
                 device="cuda",
-                tensorboard_log="/app/logs/tensorboard/",
+                # tensorboard_log="/app/logs/tensorboard/",
                 buffer_size=30_000,   # reasonable for 13GB GPU
                 batch_size=64,        # can handle larger batches on 13GB
                 learning_starts=1_000, # give buffer some data before learning
