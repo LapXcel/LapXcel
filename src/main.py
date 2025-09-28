@@ -24,7 +24,7 @@ def main():
                 train_freq=1,          # update every step
                 gradient_steps=1,
                 verbose=1)
-    # model = TQC.load("/app/logs/checkpoints/tqc_lapxcel_10000_steps", env)
+    # model = TQC.load("/app/tqc_current", env)
     # model = SAC.load("/app/checkpoints/sac_lapxcel_13000_steps", env, device="cuda")
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path="/app/logs/checkpoints/", name_prefix="tqc_lapxcel")
     model.learn(total_timesteps=1000000, callback=checkpoint_callback, log_interval=1)

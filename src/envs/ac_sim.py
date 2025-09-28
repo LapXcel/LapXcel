@@ -131,6 +131,8 @@ class ACHandler(IMesgHandler):
         self.track_progress = 0
         self.last_track_progress = 0
         self.next_checkpoint = STEP_SIZE
+        self.count_reward = False
+        self.lap_count = 0
         # Define which method should be called
         # for each type of message
         self.fns = {'telemetry': self.on_telemetry}
@@ -179,6 +181,7 @@ class ACHandler(IMesgHandler):
         self.current_step = 0
         self.last_step = -1
         self.track_progress = 0
+        self.last_track_progress = 0
         self.next_checkpoint = STEP_SIZE
         self.lap_invalid = False
         self.send_control(0, 0)
@@ -186,6 +189,7 @@ class ACHandler(IMesgHandler):
         time.sleep(1.0)
         self.timer.reset()
         self.slow = -1
+        self.count_reward = False
 
     def get_sensor_size(self):
         """
@@ -251,9 +255,13 @@ class ACHandler(IMesgHandler):
         #     return -10
         # 1 per timesteps + throttle
         # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
-        if self.track_progress >= self.next_checkpoint:
+        if self.track_progress >= self.next_checkpoint and self.track_progress - self.next_checkpoint < 15:
             reward = ((self.track_progress - self.next_checkpoint) // STEP_SIZE) / 100
-            self.next_checkpoint += STEP_SIZE
+            self.next_checkpoint += ((self.track_progress - self.next_checkpoint) // STEP_SIZE) * STEP_SIZE
+        print(self.track_progress, reward)
+        if self.lap_count > 1:
+            reward = 1
+            done = True
 
         return reward, done
 
@@ -273,19 +281,20 @@ class ACHandler(IMesgHandler):
         except Exception as e:
             print(f"[ACHandler] Failed to open image: {e}")
             return
-        image = np.array(image)
+        img = np.array(image)
+        image.close()
         # Save original image for render
         # self.original_image = np.copy(image)
         # Resize if using higher resolution images
         # image = cv2.resize(image, CAMERA_RESOLUTION)
         # Region of interest
         r = ROI
-        image = image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+        img = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
         # Convert RGB to BGR
-        # image = image[:, :, ::-1]
-        self.image_array = image
+        # img = img[:, :, ::-1]
+        self.img_array = img
         # Here resize is not useful for now (the image have already the right dimension)
-        # self.image_array = cv2.resize(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        # self.img_array = cv2.resize(img, (IMAGE_WIDTH, IMAGE_HEIGHT))
 
         self.lap_invalid = data["lap_invalid"] == "True"
         self.last_track_progress = self.track_progress
@@ -295,10 +304,17 @@ class ACHandler(IMesgHandler):
         self.acceleration = np.array([float(i) for i in data["acceleration"]], dtype=np.float32)
         self.velocity = np.array([float(i) for i in data["velocity"]], dtype=np.float32)
         self.lap_time = float(data["lap_time"])
+        self.lap_count = int(data["lap_count"])
         if self.speed >= SLOW_TIME:
             self.slow = -1
         elif self.speed < SLOW_TIME and self.slow == -1:
             self.slow = time.time()
+        
+        if self.track_progress <= 98:
+            self.count_reward = True
+        else:
+            self.count_reward = False
+        
 
     def send_control(self, steer, throttle):
         """
