@@ -69,9 +69,9 @@ class ACVAEEnv(gymnasium.Env):
 
         if vae is None:
             # Using pixels as input
-            if n_command_history > 0:
-                warnings.warn("n_command_history not supported for images"
-                              "(it will not be concatenated with the input)")
+            # if n_command_history > 0:
+            #     warnings.warn("n_command_history not supported for images"
+            #                   "(it will not be concatenated with the input)")
             self.observation_space = spaces.Tuple((
                 spaces.Box(low=0, high=255, shape=(64, 64), dtype=np.uint8),               # image_array
                 spaces.Box(low=-900, high=900, shape=(1,), dtype=np.float32),              # steering_angle
@@ -137,6 +137,7 @@ class ACVAEEnv(gymnasium.Env):
         :return: (float)
         """
         jerk_penalty = 0
+        # print(f"command history: {self.n_command_history}")
         if self.n_command_history > 1:
             # Take only last command into account
             for i in range(1):
@@ -149,6 +150,7 @@ class ACVAEEnv(gymnasium.Env):
                     jerk_penalty += JERK_REWARD_WEIGHT * (error ** 2)
                 else:
                     jerk_penalty += 0
+        # print(jerk_penalty)
         return jerk_penalty
 
     def postprocessing_step(self, action, observation, reward, done, truncated, info):
@@ -169,7 +171,7 @@ class ACVAEEnv(gymnasium.Env):
         if self.n_command_history > 0:
             self.command_history = np.roll(self.command_history, shift=-self.n_commands, axis=-1)
             self.command_history[..., -self.n_commands:] = action
-            observation = np.concatenate((observation, self.command_history), axis=-1)
+            # observation = np.concatenate((observation, self.command_history), axis=-1)
 
         jerk_penalty = self.jerk_penalty()
         # Cancel reward if the continuity constrain is violated
@@ -249,8 +251,8 @@ class ACVAEEnv(gymnasium.Env):
             observation = np.concatenate([elem.flatten() for elem in observation])
             flatten(self.observation_space, observation)
 
-        if self.n_command_history > 0:
-            observation = np.concatenate((observation, self.command_history), axis=-1)
+        # if self.n_command_history > 0:
+        #     observation = np.concatenate((observation, self.command_history), axis=-1)
 
         if self.n_stack > 1:
             if self.vae:

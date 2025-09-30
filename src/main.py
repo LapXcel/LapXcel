@@ -12,7 +12,7 @@ def main():
     """
     # vae = VAE(z_size=Z_SIZE)
     # vae.load_model("/app/vae/vae_trained_params.pkl")
-    env = ACVAEEnv(frame_skip=FRAME_SKIP, vae=None, min_throttle=MIN_THROTTLE, max_throttle=MAX_THROTTLE, verbose=False, n_stack=4)
+    env = ACVAEEnv(frame_skip=FRAME_SKIP, vae=None, min_throttle=MIN_THROTTLE, max_throttle=MAX_THROTTLE, verbose=False, n_stack=4, n_command_history=2)
 
     model = TQC(policy="MlpPolicy",
                 env=env,
@@ -24,7 +24,7 @@ def main():
                 train_freq=1,          # update every step
                 gradient_steps=1,
                 verbose=1)
-    # model = TQC.load("/app/tqc_current", env)
+    # model = TQC.load("/app/tqc_lapxcel_300000_steps", env)
     # model = SAC.load("/app/checkpoints/sac_lapxcel_13000_steps", env, device="cuda")
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path="/app/logs/checkpoints/", name_prefix="tqc_lapxcel")
     model.learn(total_timesteps=1000000, callback=checkpoint_callback, log_interval=1)

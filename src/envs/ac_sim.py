@@ -133,6 +133,7 @@ class ACHandler(IMesgHandler):
         self.next_checkpoint = STEP_SIZE
         self.count_reward = False
         self.lap_count = 0
+        self.reward = 0
         # Define which method should be called
         # for each type of message
         self.fns = {'telemetry': self.on_telemetry}
@@ -174,6 +175,7 @@ class ACHandler(IMesgHandler):
         Global reset, notably it
         resets car to initial position.
         """
+        print(self.reward)
         if self.verbose:
             print("[ACHandler] resetting")
         self.image_array = np.zeros(self.camera_img_size)
@@ -190,6 +192,7 @@ class ACHandler(IMesgHandler):
         self.timer.reset()
         self.slow = -1
         self.count_reward = False
+        self.reward = 0
 
     def get_sensor_size(self):
         """
@@ -258,10 +261,12 @@ class ACHandler(IMesgHandler):
         if self.track_progress >= self.next_checkpoint and self.track_progress - self.next_checkpoint < 15:
             reward = ((self.track_progress - self.next_checkpoint) // STEP_SIZE) / 100
             self.next_checkpoint += ((self.track_progress - self.next_checkpoint) // STEP_SIZE) * STEP_SIZE
-        print(self.track_progress, reward)
+
         if self.lap_count > 1:
             reward = 1
             done = True
+        
+        self.reward += reward
 
         return reward, done
 
