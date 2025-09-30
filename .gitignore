@@ -7,3 +7,4 @@ master_file.txt
 /src/vae/imgs
 /src/logs
 *.zip
+wandb.env
