@@ -175,7 +175,6 @@ class ACHandler(IMesgHandler):
         Global reset, notably it
         resets car to initial position.
         """
-        print(self.reward)
         if self.verbose:
             print("[ACHandler] resetting")
         self.image_array = np.zeros(self.camera_img_size)

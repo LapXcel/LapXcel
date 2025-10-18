@@ -21,7 +21,7 @@ def main():
         "policy": "MlpPolicy",
         "buffer_size": 30000,
         "batch_size": 64,
-        "learning_starts": 1000,
+        "learning_starts": 10000,
         "train_freq": 1,
         "gradient_steps": 1,
         "env": env,
@@ -30,8 +30,9 @@ def main():
     }
 
     model = TQC(**config)
+    # model = TQC.load("/app/tqc_lapxcel_320000_steps", env)
 
-    wandbConfig = config = {
+    wandbConfig = {
         "policy": "MlpPolicy",  # or just "MlpPolicy" if static
         "algo": "TQC",
         "buffer_size": model.buffer_size,
@@ -39,7 +40,7 @@ def main():
         "learning_starts": model.learning_starts,
         "train_freq": model.train_freq,
         "gradient_steps": model.gradient_steps,
-        "env": env.spec.id if env.spec else "CustomEnv"
+        "env": env.spec.id if env.spec else "CustomEnv",
     }
 
     run = wandb.init(
@@ -57,10 +58,9 @@ def main():
             gradient_save_freq=1000,
             model_save_path="/app/logs/models/",
             verbose=2,
-        ),
+        )
     ])
 
-    # model = TQC.load("/app/tqc_lapxcel_300000_steps", env)
     # model = SAC.load("/app/checkpoints/sac_lapxcel_13000_steps", env, device="cuda")
     model.learn(total_timesteps=1_000_000, callback=callbacks, log_interval=1)
     model.save("/app/logs/models/tqc_lapxcel")

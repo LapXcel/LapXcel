@@ -249,7 +249,7 @@ class ACVAEEnv(gymnasium.Env):
 
         if not self.vae:
             observation = np.concatenate([elem.flatten() for elem in observation])
-            flatten(self.observation_space, observation)
+            observation = flatten(self.observation_space, observation)
 
         # if self.n_command_history > 0:
         #     observation = np.concatenate((observation, self.command_history), axis=-1)
