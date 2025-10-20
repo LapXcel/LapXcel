@@ -3,5 +3,6 @@ FROM rocm/jax:rocm6.4.2-jax0.4.35-py3.12
 RUN apt-get update && apt-get install -y libopenmpi-dev openmpi-bin libevdev-dev && \
     ldconfig
 
-RUN pip install jaxlib==0.4.35 gymnasium sbx-rl mpi4py optuna tensorboard opencv-python
-CMD ["python3", "/app/main.py"]
+RUN pip install jaxlib==0.4.35 gymnasium sbx-rl mpi4py optuna tensorboard opencv-python wandb
+
+CMD ["/app/entrypoint.sh"]

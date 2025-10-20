@@ -20,6 +20,8 @@ services:
       - type: bind
         source: ./
         target: /app/
+    env_file:
+      - wandb.env
     tty: true
     stdin_open: true
   # vae:

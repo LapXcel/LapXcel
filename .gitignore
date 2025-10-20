@@ -6,3 +6,5 @@ master_file.txt
 *.pkl
 /src/vae/imgs
 /src/logs
+*.zip
+wandb.env

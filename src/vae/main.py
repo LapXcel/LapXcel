@@ -54,11 +54,11 @@ def training_loop(image_dir, vae, epochs=10, batch_size=16):
             batch_jax = jnp.array(batch)
 
             rng, key = jax.random.split(rng)
-            vae.update_model(batch_jax, key)
+            vae.state = vae.update_model(batch_jax, key)
 
         # Compute loss only if at least one batch processed
         if batch_jax is not None and key is not None:
-            loss = vae.compute_loss(batch_jax, key)
+            loss = vae.compute_loss(vae.state.params, batch_jax, key)
             print(f"Epoch {epoch + 1}, Loss: {loss:.4f}")
         else:
             print(f"Epoch {epoch + 1}, no batches processed")

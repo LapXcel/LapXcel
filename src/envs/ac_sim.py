@@ -7,12 +7,13 @@ import time
 from io import BytesIO
 from threading import Thread
 import time
+import ast
 
 import numpy as np
 from PIL import Image
 
 from config import INPUT_DIM, ROI, THROTTLE_REWARD_WEIGHT, MAX_THROTTLE, MIN_THROTTLE, \
-    REWARD_CRASH, CRASH_SPEED_WEIGHT
+    REWARD_CRASH, CRASH_SPEED_WEIGHT, SLOW_TIME, STEP_SIZE
 from envs.utils.fps import FPSTimer
 from envs.utils.tcp_server import IMesgHandler, SimServer
 
@@ -95,8 +96,8 @@ class ACController:
     def is_game_over(self):
         return self.handler.is_game_over()
 
-    def calc_reward(self, done):
-        return self.handler.calc_reward(done)
+    def calc_reward(self):
+        return self.handler.calc_reward()
 
 
 class ACHandler(IMesgHandler):
@@ -117,15 +118,22 @@ class ACHandler(IMesgHandler):
         self.original_image = None
         self.last_obs = None
         self.last_throttle = 0.0
-        self.steering_angle = 0.0
+        self.steering_angle = np.array([0.0], dtype=np.float32)    
         self.current_step = 0
         self.last_step = -1
-        self.speed = 0
+        self.speed = np.array([0.0], dtype=np.float32)   
+        self.acceleration = np.array([0, 0, 0], dtype=np.float32)
+        self.lap_time = 0
+        self.velocity = np.array([0, 0, 0], dtype=np.float32)
         self.steering = None
         self.lap_invalid = False
         self.slow = -1
         self.track_progress = 0
         self.last_track_progress = 0
+        self.next_checkpoint = STEP_SIZE
+        self.count_reward = False
+        self.lap_count = 0
+        self.reward = 0
         # Define which method should be called
         # for each type of message
         self.fns = {'telemetry': self.on_telemetry}
@@ -173,12 +181,17 @@ class ACHandler(IMesgHandler):
         self.last_obs = None
         self.current_step = 0
         self.last_step = -1
+        self.track_progress = 0
+        self.last_track_progress = 0
+        self.next_checkpoint = STEP_SIZE
         self.lap_invalid = False
         self.send_control(0, 0)
         self.send_reset_car()
         time.sleep(1.0)
         self.timer.reset()
         self.slow = -1
+        self.count_reward = False
+        self.reward = 0
 
     def get_sensor_size(self):
         """
@@ -199,21 +212,21 @@ class ACHandler(IMesgHandler):
         self.current_step += 1
 
         self.send_control(self.steering, throttle)
+        time.sleep(0.1)
 
     def observe(self):
         msg = {'msg_type': 'request'}
         self.queue_message(msg)
 
-        while self.last_obs is self.image_array:
-            time.sleep(1.0/60.0)
+        # while self.last_obs is self.image_array:
+        #     time.sleep(1.0/60.0)
         
         self.last_step = self.current_step
         self.last_obs = self.image_array
-        observation = self.image_array
-        done = self.is_game_over()
-        truncated = time.time() - self.slow >= 5 and self.slow != -1
-        reward = self.calc_reward(done, truncated)
-        info = {}
+        observation = (self.image_array, self.steering_angle, self.speed, self.velocity, self.acceleration)
+        truncated = False
+        reward, done = self.calc_reward()
+        info = {"lap_time": self.lap_time}
 
         self.timer.on_frame()
 
@@ -229,7 +242,7 @@ class ACHandler(IMesgHandler):
             print(f"[ACHandler] Is Game Over {self.lap_invalid}")
         return self.lap_invalid
 
-    def calc_reward(self, done, truncated):
+    def calc_reward(self):
         """
         Compute reward:
         - +1 life bonus for each step + throttle bonus
@@ -238,16 +251,23 @@ class ACHandler(IMesgHandler):
         :param done: (bool)
         :return: (float)
         """
-        if done:
-            # penalize the agent for getting off the road fast
-            norm_throttle = (self.last_throttle - MIN_THROTTLE) / (MAX_THROTTLE - MIN_THROTTLE)
-            return REWARD_CRASH - CRASH_SPEED_WEIGHT * norm_throttle
-        if truncated:
-            return -5
+        reward = 0
+        done = self.lap_invalid or time.time() - self.slow >= SLOW_TIME and self.slow != -1
+        # if time.time() - self.slow >= SLOW_TIME and self.slow != -1:
+        #     return -10
         # 1 per timesteps + throttle
         # throttle_reward = THROTTLE_REWARD_WEIGHT * (self.last_throttle / MAX_THROTTLE)
-        reward = self.track_progress - self.last_track_progress
-        return reward
+        if self.track_progress >= self.next_checkpoint and self.track_progress - self.next_checkpoint < 15:
+            reward = ((self.track_progress - self.next_checkpoint) // STEP_SIZE) / 100
+            self.next_checkpoint += ((self.track_progress - self.next_checkpoint) // STEP_SIZE) * STEP_SIZE
+
+        if self.lap_count > 1:
+            reward = 1
+            done = True
+        
+        self.reward += reward
+
+        return reward, done
 
     # ------ Socket interface ----------- #
 
@@ -265,30 +285,40 @@ class ACHandler(IMesgHandler):
         except Exception as e:
             print(f"[ACHandler] Failed to open image: {e}")
             return
-        image = np.array(image)
+        img = np.array(image)
+        image.close()
         # Save original image for render
         # self.original_image = np.copy(image)
         # Resize if using higher resolution images
         # image = cv2.resize(image, CAMERA_RESOLUTION)
         # Region of interest
         r = ROI
-        image = image[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
+        img = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
         # Convert RGB to BGR
-        # image = image[:, :, ::-1]
-        self.image_array = image
+        # img = img[:, :, ::-1]
+        self.img_array = img
         # Here resize is not useful for now (the image have already the right dimension)
-        # self.image_array = cv2.resize(image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        # self.img_array = cv2.resize(img, (IMAGE_WIDTH, IMAGE_HEIGHT))
 
         self.lap_invalid = data["lap_invalid"] == "True"
         self.last_track_progress = self.track_progress
         self.track_progress = float(data["track_progress"]) * 100
-        self.steering_angle = float(data['steering_angle'])
-        self.speed = float(data["speed"])
-        if self.speed >= 5:
+        self.steering_angle = np.array([float(data['steering_angle'])], dtype=np.float32)
+        self.speed = np.array([float(data["speed"])], dtype=np.float32)
+        self.acceleration = np.array([float(i) for i in data["acceleration"]], dtype=np.float32)
+        self.velocity = np.array([float(i) for i in data["velocity"]], dtype=np.float32)
+        self.lap_time = float(data["lap_time"])
+        self.lap_count = int(data["lap_count"])
+        if self.speed >= SLOW_TIME:
             self.slow = -1
-        elif self.speed < 5 and self.slow == -1:
+        elif self.speed < SLOW_TIME and self.slow == -1:
             self.slow = time.time()
-
+        
+        if self.track_progress <= 98:
+            self.count_reward = True
+        else:
+            self.count_reward = False
+        
 
     def send_control(self, steer, throttle):
         """
