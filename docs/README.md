@@ -8,33 +8,33 @@
 
 LapXcel is a cutting-edge telemetry analytics platform designed to optimize sim racing performance through advanced machine learning and real-time data analysis. Built for professional e-sports teams and racing enthusiasts, LapXcel provides comprehensive insights, performance optimization, and AI-driven coaching to help drivers achieve their theoretical best lap times.
 
-## 🏆 Key Features
+## Key Features
 
-### 🚗 Real-Time Telemetry Analysis
+### Real-Time Telemetry Analysis
 - **Live Data Streaming**: Real-time telemetry collection from Assetto Corsa
 - **High-Frequency Data Processing**: Handle 100+ Hz data streams with minimal latency
 - **Multi-Track Support**: Comprehensive analysis across various racing circuits
 - **Vehicle Dynamics Monitoring**: Track speed, acceleration, braking, steering, and more
 
-### 🤖 AI-Powered Performance Optimization
+### AI-Powered Performance Optimization
 - **Reinforcement Learning Models**: SAC, TQC, and PPO algorithms for optimal lap time prediction
 - **Hyperparameter Optimization**: Automated model tuning with Optuna
 - **Theoretical Best Calculation**: AI-driven computation of optimal lap times
 - **Adaptive Learning**: Continuous improvement based on driving patterns
 
-### 📊 Professional Analytics Dashboard
+### Professional Analytics Dashboard
 - **Interactive Visualizations**: Real-time charts and performance metrics
 - **Lap Comparison Tools**: Detailed sector-by-sector analysis
 - **Performance Insights**: Actionable recommendations for improvement
 - **Export Capabilities**: Data export in CSV, JSON, and compressed formats
 
-### 🔬 Advanced Performance Metrics
+### Advanced Performance Metrics
 - **Consistency Scoring**: Measure driving consistency across sessions
 - **Efficiency Analysis**: Fuel consumption and tire wear optimization
 - **Smoothness Evaluation**: Steering, throttle, and brake input analysis
 - **Competitive Benchmarking**: Compare performance against global leaderboards
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TB
@@ -69,7 +69,7 @@ graph TB
 - **JAX/Flax**: High-performance neural networks
 - **TensorBoard**: Training visualization and monitoring
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Python 3.11+**
@@ -132,27 +132,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## 📖 Documentation
-
-### API Documentation
-- **Interactive API Docs**: http://localhost:8000/api/docs
-- **OpenAPI Spec**: http://localhost:8000/openapi.json
-- **Redoc**: http://localhost:8000/api/redoc
-
-### User Guides
-- [Getting Started Guide](docs/user-guide/getting-started.md)
-- [Dashboard Tutorial](docs/user-guide/dashboard-tutorial.md)
-- [Telemetry Analysis](docs/user-guide/telemetry-analysis.md)
-- [AI Training Guide](docs/user-guide/ai-training.md)
-
-### Developer Documentation
-- [API Reference](docs/api/README.md)
-- [Architecture Overview](docs/architecture/README.md)
-- [Database Schema](docs/database/schema.md)
-- [ML Pipeline](docs/ml/pipeline.md)
-- [Deployment Guide](docs/deployment/README.md)
-
-## 🧪 Testing
+## Testing
 
 ### Backend Tests
 ```bash
@@ -179,7 +159,7 @@ cd backend
 locust -f tests/performance/locustfile.py --host=http://localhost:8000
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -208,7 +188,7 @@ DEFAULT_TOTAL_STEPS = 1000000
 HYPEROPT_TRIALS = 100
 ```
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### System Performance
 - **API Response Time**: < 100ms (95th percentile)
@@ -228,7 +208,7 @@ HYPEROPT_TRIALS = 100
 - **Integration Tests**: 150+ test scenarios
 - **E2E Tests**: 50+ user journeys
 
-## 🛡️ Security
+## Security
 
 ### Authentication & Authorization
 - **JWT Tokens**: Secure API authentication
@@ -248,7 +228,7 @@ HYPEROPT_TRIALS = 100
 - **Vulnerability Scanning**: Automated security checks
 - **Audit Logging**: Comprehensive access logging
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Deployment
 ```bash
@@ -274,7 +254,7 @@ docker stack deploy -c docker-compose.prod.yml lapxcel
 - **Tracing**: Jaeger distributed tracing
 - **Alerting**: PagerDuty integration
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from the racing and developer communities!
 
@@ -299,7 +279,7 @@ We welcome contributions from the racing and developer communities!
 - Include detailed reproduction steps for bugs
 - Provide system information and logs when relevant
 
-## 📋 Roadmap
+## Roadmap
 
 ### Q1 2024
 - [ ] **Multi-Sim Support**: iRacing and rFactor 2 integration
@@ -319,7 +299,7 @@ We welcome contributions from the racing and developer communities!
 - [ ] **AI Coaching**: Personalized AI driving coach
 - [ ] **Performance Prediction**: Race outcome prediction models
 
-## 👥 Team
+## Team
 
 ### Core Development Team
 - **Samuel Braun** ([@samuelbraun](https://github.com/samuelbraun)) - Lead Developer & ML Engineer
@@ -332,11 +312,11 @@ We welcome contributions from the racing and developer communities!
 - **University of Ottawa** - Academic Support and Resources
 - **Assetto Corsa Community** - Testing and Feedback
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎯 Acknowledgments
+## Acknowledgments
 
 - **Stable Baselines3** team for excellent RL implementations
 - **FastAPI** community for the amazing web framework
@@ -344,7 +324,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Assetto Corsa** for providing the simulation platform
 - **Open Source Community** for countless libraries and tools
 
-## 📞 Support
+## Support
 
 ### Getting Help
 - **Documentation**: Check our comprehensive docs first

@@ -26,12 +26,12 @@ The LapXcel API provides programmatic access to racing telemetry data, performan
 
 ### API Features
 
-- 🔐 JWT-based authentication
-- 📊 Real-time telemetry streaming via WebSockets
-- 📈 Comprehensive performance analytics
-- 🤖 ML model training and deployment
-- 🏁 Global leaderboards
-- ⚡ High-performance data processing
+- JWT-based authentication
+- Real-time telemetry streaming via WebSockets
+- Comprehensive performance analytics
+- ML model training and deployment
+- Global leaderboards
+- High-performance data processing
 
 ---
 
