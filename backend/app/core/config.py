@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024  # 100MB
     ALLOWED_FILE_TYPES: List[str] = [".csv", ".json", ".zip"]
     
+    # Testing
+    TESTING: bool = False
+    
     @validator("ENVIRONMENT")
     def validate_environment(cls, v):
         allowed = ["development", "staging", "production"]
